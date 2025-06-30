@@ -1,0 +1,36 @@
+<!-- templates/login.html -->
+
+
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+  {# フラッシュメッセージ（ログイン失敗時のエラー） #}
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="alert alert-danger">
+        {% for msg in messages %}
+          <p>{{ msg }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+
+<div class="container mt-5" style="max-width: 400px;">
+  <h2>ログイン</h2>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="mb-3">
+      {{ form.email.label }} {{ form.email(class="form-control") }}
+    </div>
+    <div class="mb-3">
+      {{ form.password.label }} {{ form.password(class="form-control") }}
+    </div>
+    <div class="mb-3">
+      {{ form.submit(class="btn btn-primary w-100") }}
+    </div>
+  </form>
+</div>
+{% endblock %}

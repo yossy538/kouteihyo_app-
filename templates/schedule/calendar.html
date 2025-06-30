@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>三空工業 の工程表（カレンダー表示）</h2>
+<div id="calendar"></div>
+<style>
+  #calendar {
+    max-width: 1000px;
+    margin: 40px auto;
+    height: 600px;
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<!-- FullCalendar CDN 修正済み -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+
+<script>
+   document.addEventListener('DOMContentLoaded', function () {
+    var calendarEl = document.getElementById('calendar');
+
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+  initialView: 'dayGridMonth',
+  locale: 'ja',
+  headerToolbar: {
+    left: 'prev,next today',
+    center: 'title',
+    right: 'dayGridMonth,listWeek'
+  },
+  events: '/api/schedules',
+
+  // ✅ イベントクリック（すでにある処理）
+  eventClick: function(info) {
+    const date = info.event.startStr.split('T')[0];
+    window.location.href = `/schedules/date/${date}`;
+  },
+
+  // ✅ 日付クリックも追加！
+  dateClick: function(info) {
+    const clickedDate = info.dateStr;
+    window.location.href = `/schedules/date/${clickedDate}`;
+  }
+});
+
+    calendar.render();
+  });
+</script>
+{% endblock %}

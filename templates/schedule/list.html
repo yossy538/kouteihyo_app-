@@ -1,0 +1,18 @@
+<!-- templates/schedule/list.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+  <h3>{{ current_user.company_name }} の工程表</h3>
+
+  {% for date, items in schedules_by_date.items() %}
+    <h5 class="mt-4">📅 {{ date }}</h5>
+    {% for s in items %}
+      <div class="card mb-2 p-2">
+        <strong>🕒 {{ s.time_slot }}</strong>：{{ s.task_name }}（{{ s.person_in_charge }}）<br>
+        <small class="text-muted">{{ s.comment }}</small>
+      </div>
+    {% endfor %}
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,120 @@
+<!-- templates/schedule/by_date.html -->
+
+
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h3>{{ selected_date.strftime('%Y年%m月%d日') }} の工程予定</h3>
+
+  <form method="POST">
+    {% for s in schedules %}
+    <div class="card my-3">
+      <div class="card-body">
+        <h5 class="card-title">{{ s.company.company_name }}</h5>
+
+        <div class="mb-2">
+          <strong>担当者:</strong>
+          {% if s.company_id == current_user.id %}
+            <input type="text" name="person_in_charge_{{ s.id }}" value="{{ s.person_in_charge }}" class="form-control">
+          {% else %}
+            {{ s.person_in_charge or "未設定" }}
+          {% endif %}
+        </div>
+
+        <div class="mb-2">
+          <strong>時間帯:</strong>
+          {% if s.company_id == current_user.id %}
+            <select name="time_slot_{{ s.id }}" class="form-control">
+              {% for slot in ['午前', '午後', '終日', '夜'] %}
+              <option value="{{ slot }}" {% if slot == s.time_slot %}selected{% endif %}>{{ slot }}</option>
+              {% endfor %}
+            </select>
+          {% else %}
+            {{ s.time_slot }}
+          {% endif %}
+        </div>
+
+        <div class="mb-2">
+          <strong>作業内容:</strong>
+          {% if s.company_id == current_user.id %}
+            <input type="text" name="task_name_{{ s.id }}" value="{{ s.task_name }}" class="form-control">
+          {% else %}
+            {{ s.task_name }}
+          {% endif %}
+        </div>
+
+        <div class="mb-2">
+          <strong>コメント:</strong>
+          {% if s.company_id == current_user.id %}
+            <textarea name="comment_{{ s.id }}" class="form-control" rows="2">{{ s.comment }}</textarea>
+          {% else %}
+            {{ s.comment or "なし" }}
+          {% endif %}
+        </div>
+
+        <!-- ✅ 依頼元情報もカード内に移動 -->
+<!-- 依頼元担当者 -->
+<div class="mb-2">
+  <label>依頼元担当者:</label>
+  {% if current_user.company_name == s.company.company_name %}
+    <input type="text" name="client_person_{{ s.id }}" value="{{ s.client_person or '' }}" class="form-control">
+  {% else %}
+    <input type="text" value="{{ s.client_person or '未設定' }}" class="form-control bg-light" readonly>
+  {% endif %}
+</div>
+
+<!-- 依頼元コメント -->
+<div class="mb-2">
+  <label>依頼元コメント:</label>
+  {% if current_user.company_name == s.company.company_name %}
+    <textarea name="client_comment_{{ s.id }}" class="form-control" rows="2">{{ s.client_comment or '' }}</textarea>
+  {% else %}
+    <textarea class="form-control bg-light" rows="2" readonly>{{ s.client_comment or 'なし' }}</textarea>
+  {% endif %}
+</div>
+
+
+
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="text-center mt-4">
+      <button type="submit" class="btn btn-primary">更新</button>
+      <a href="{{ url_for('main.schedule_calendar') }}" class="btn btn-secondary">カレンダーに戻る</a>
+    </div>
+  </form>
+</div>
+
+<h4>🔰 新しい工程予定を追加</h4>
+<form method="POST" action="{{ url_for('main.schedule_add', date=selected_date) }}">
+  <div class="mb-3">
+    <label>時間帯</label>
+    <select name="time_slot" class="form-control">
+      {% for slot in ['午前', '午後', '終日', '夜'] %}
+      <option value="{{ slot }}">{{ slot }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label>作業内容</label>
+    <input type="text" name="task_name" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label>担当者</label>
+    <input type="text" name="person_in_charge" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label>コメント</label>
+    <textarea name="comment" class="form-control" rows="2"></textarea>
+  </div>
+   <div class="mb-3">
+  <label for="site_name">現場名</label>
+  <input type="text" class="form-control" name="site_name" required>
+</div>
+  <button type="submit" class="btn btn-success">追加</button>
+ 
+
+</form>
+
+{% endblock %}

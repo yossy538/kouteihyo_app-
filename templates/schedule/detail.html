@@ -1,0 +1,49 @@
+<h2>予定の詳細</h2>
+
+<form method="POST">
+  <div class="mb-3">
+    <label>日付</label>
+    <input type="text" class="form-control" value="{{ schedule.date }}" disabled>
+  </div>
+
+  <div class="mb-3">
+    <label>時間帯</label>
+    <select name="time_slot" class="form-control" {% if current_user.id != schedule.company_id %}disabled{% endif %}>
+      <option {% if schedule.time_slot == '午前' %}selected{% endif %}>午前</option>
+      <option {% if schedule.time_slot == '午後' %}selected{% endif %}>午後</option>
+      <option {% if schedule.time_slot == '終日' %}selected{% endif %}>終日</option>
+      <option {% if schedule.time_slot == '夜' %}selected{% endif %}>夜</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label>作業名</label>
+    <input type="text" name="task_name" class="form-control" value="{{ schedule.task_name }}" {% if current_user.id != schedule.company_id %}disabled{% endif %}>
+  </div>
+
+  <div class="mb-3">
+    <label>担当者</label>
+    <input type="text" name="person_in_charge" class="form-control" value="{{ schedule.person_in_charge }}" {% if current_user.id != schedule.company_id %}disabled{% endif %}>
+  </div>
+
+  <div class="mb-3">
+    <label>作業コメント</label>
+    <textarea name="comment" class="form-control" {% if current_user.id != schedule.company_id %}disabled{% endif %}>{{ schedule.comment }}</textarea>
+  </div>
+
+  <!-- ✅ 新しく追加：依頼元コメント -->
+  <div class="mb-3">
+    <label>依頼元コメント（菱輝金型様）</label>
+    <textarea name="client_comment" class="form-control" {% if current_user.id != schedule.company_id %}disabled{% endif %}>{{ schedule.client_comment }}</textarea>
+  </div>
+
+  <!-- ✅ 新しく追加：菱輝金型 担当者 -->
+  <div class="mb-3">
+    <label>菱輝金型様 担当者</label>
+    <input type="text" name="client_person" class="form-control" value="{{ schedule.client_person }}" {% if current_user.id != schedule.company_id %}disabled{% endif %}>
+  </div>
+
+  {% if current_user.id == schedule.company_id %}
+  <button type="submit" class="btn btn-primary">保存</button>
+  {% endif %}
+</form>
