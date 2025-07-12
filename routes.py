@@ -12,6 +12,7 @@ from flask_login import login_required, current_user
 from models import db, Schedule
 from datetime import datetime
 from werkzeug.security import check_password_hash
+from datetime import datetime, timedelta
 
 
 
@@ -30,6 +31,8 @@ def login():
         if user and check_password_hash(user.password_hash, form.password.data):
             login_user(user)
             print('✅ ログイン成功：リダイレクトします')
+            print('✅ ログインした会社:', user.company_name, '(ID:', user.id, ')')
+
             return redirect(url_for('main.schedule_calendar'))
         flash('メールアドレスまたはパスワードが違います')
     else:
@@ -70,12 +73,12 @@ def schedule_calendar():
 @bp.route('/api/schedules')
 @login_required
 def api_schedules():
-    from models import Schedule
+    from models import Schedule  # ✅ モデル読み込み（あってもOK）
 
-    # ✅ 全ユーザーに全予定を表示（ログインしていればOK）
+    # 1. 予定を取得
     schedules = Schedule.query.all()
 
-    # 会社IDごとの色マップ（5色まで）
+    # 2. 色設定（会社IDに応じて）
     company_colors = {
         1: '#ff9999',  # 三空工業（赤）
         2: '#99ccff',  # サトワ電工（青）
@@ -84,17 +87,24 @@ def api_schedules():
         5: '#cc99ff',  # 菱輝金型（紫）
     }
 
+    # 3. JSONリストを生成
     events = []
     for s in schedules:
-       events.append({
-    "id": s.id, 
-    "title": f"{s.time_slot} {s.task_name}",
-    "start": s.date.isoformat(),
-    "color": company_colors.get(s.company_id, '#cccccc'),  # 背景色
-    "textColor": "#000000"  # ←ここを '#ffffff' にすると白文字、見やすくなる
-})
+        start = s.date
+        end = s.end_date or s.date
+
+        events.append({
+            "id": s.id,
+            "title": f"{s.time_slot} {s.task_name}",
+            "start": start.isoformat(),
+            "end": (end + timedelta(days=1)).isoformat(),
+            "color": company_colors.get(s.company_id, '#cccccc'),
+            "textColor": "#000000",
+            "allDay": True
+        })
 
     return jsonify(events)
+
 
 @bp.route('/schedules/<int:id>', methods=['GET', 'POST'])
 @login_required
@@ -146,20 +156,28 @@ def schedule_by_date(date_str):
     return render_template('schedule/by_date.html', schedules=schedules, selected_date=selected_date)
 
 
-@bp.route('/schedules/add/<date>', methods=['POST'])
+@bp.route('/schedules/add', methods=['POST'])
 @login_required
-def schedule_add(date):
-    selected_date = datetime.strptime(date, "%Y-%m-%d").date()
+def schedule_add():
+    print('📆 受け取った開始日:', request.form.get('date'))
+    print('📦 受け取った終了日:', request.form.get('end_date'))
+    print('📡 受け取った時間帯:', request.form.get('time_slot')) 
+    date = datetime.strptime(request.form.get('date'), "%Y-%m-%d").date()
+
+    # ✅ end_date の安全な取得（空なら None）
+    end_date_str = request.form.get('end_date')
+    end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else None
 
     new_schedule = Schedule(
-        site_name=request.form.get('site_name'),  # ✅ これを追加！
-        date=selected_date,
+        site_name=request.form.get('site_name'),
+        date=date,
+        end_date=end_date,  # ✅ 修正された end_date
         company_id=current_user.id,
         time_slot=request.form.get('time_slot'),
         task_name=request.form.get('task_name'),
         person_in_charge=request.form.get('person_in_charge'),
         comment=request.form.get('comment'),
-        client_person=request.form.get('client_person'),   # ← 今後の拡張もOK
+        client_person=request.form.get('client_person'),
         client_comment=request.form.get('client_comment'),
         created_by=current_user.id
     )
@@ -167,5 +185,25 @@ def schedule_add(date):
     db.session.add(new_schedule)
     db.session.commit()
 
-    return redirect(url_for('main.schedule_by_date', date_str=date))
+    return redirect(url_for('main.schedule_by_date', date_str=date.strftime('%Y-%m-%d')))
+
+@bp.route('/schedules/delete/<int:id>', methods=['POST'])
+@login_required
+def schedule_delete(id):
+    print("🧹 削除リクエスト受信 ID:", id)
+
+    schedule = Schedule.query.get_or_404(id)
+
+    if schedule.company_id != current_user.id:
+        flash("自分の会社の予定のみ削除できます。", "danger")
+        return redirect(url_for('main.schedule_by_date', date_str=schedule.date.strftime('%Y-%m-%d')))
+
+    db.session.delete(schedule)
+    db.session.commit()
+    flash("予定を削除しました。", "success")
+    return redirect(url_for('main.schedule_by_date', date_str=schedule.date.strftime('%Y-%m-%d')))
+
+
+
+
 

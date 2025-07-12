@@ -20,7 +20,8 @@ class Schedule(db.Model):
     __tablename__ = 'schedules'
 
     id = db.Column(db.Integer, primary_key=True)
-    site_name = db.Column(db.String(255), nullable=False)
+    site_name = db.Column(db.String(255), nullable=False)  # 開始日
+    end_date = db.Column(db.Date, nullable=True)  # 終了日
     date = db.Column(db.Date, nullable=False)
     time_slot = db.Column(db.String(10), nullable=False)  # 午前／午後／夜
     task_name = db.Column(db.String(100), nullable=False)
