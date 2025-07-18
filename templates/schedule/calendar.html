@@ -1,50 +1,105 @@
+<!-- templates/schedule/calendar.html -->
+
 {% extends 'base.html' %}
+
+{% block head %}
+  <!-- FullCalendar CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+  <style>
+    /* カレンダー本体 */
+    #calendar {
+      max-width: 1000px;
+      margin: 40px auto;
+      height: 600px;
+    }
+
+    /* 日曜ヘッダーを赤文字に */
+    .fc-col-header-cell.fc-day-sun .fc-col-header-cell-cushion {
+      color: red !important;
+      font-weight: bold;
+    }
+
+    /* 日曜セルの日付を赤文字に */
+    .fc-daygrid-day.fc-day-sun .fc-daygrid-day-number {
+      color: red !important;
+      font-weight: bold;
+    }
+
+    /* holiday クラスの日付を赤文字に */
+    .fc-daygrid-day.holiday .fc-daygrid-day-number {
+      color: red !important;
+      font-weight: bold;
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-<h2>三空工業 の工程表（カレンダー表示）</h2>
-<div id="calendar"></div>
-<style>
-  #calendar {
-    max-width: 1000px;
-    margin: 40px auto;
-    height: 600px;
-  }
-</style>
+  <h2>稲沢工場D棟 の工程表</h2>
+  <div id="calendar"></div>
 {% endblock %}
 
 {% block scripts %}
-<!-- FullCalendar CDN 修正済み -->
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+  <!-- FullCalendar JS + 日本語ロケール -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales/ja.global.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // 祝日リスト（日付は YYYY-MM-DD 形式で記入）
+      var holidayList = [
+        // '2025-07-23', '2025-07-20', ...
+      ];
 
-<script>
-   document.addEventListener('DOMContentLoaded', function () {
-    var calendarEl = document.getElementById('calendar');
+      var calendar = new FullCalendar.Calendar(
+        document.getElementById('calendar'),
+        {
+          locale: 'ja',
+          initialView: 'dayGridMonth',
+          headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: ''
+          },
+          titleFormat: { year: 'numeric', month: 'numeric' },
+          dayHeaderFormat: { weekday: 'narrow' },
+          buttonText: { today: '今日' },
+          firstDay: 0,
+          events: '/api/schedules',
 
-    var calendar = new FullCalendar.Calendar(calendarEl, {
-  initialView: 'dayGridMonth',
-  locale: 'ja',
-  headerToolbar: {
-    left: 'prev,next today',
-    center: 'title',
-    right: 'dayGridMonth,listWeek'
-  },
-  displayEventEnd: true,
-  events: '/api/schedules',
+          // セルクリックで詳細画面へ
+          dateClick: function(info) {
+            window.location.href = '/schedules/date/' + info.dateStr;
+          },
 
-  // ✅ イベントクリック（すでにある処理）
-  eventClick: function(info) {
-    const date = info.event.startStr.split('T')[0];
-    window.location.href = `/schedules/date/${date}`;
-  },
+          // イベントクリック（メモのみ詳細画面へ）
+          eventClick: function(info) {
+            if (info.event.id.startsWith('memo-')) {
+              window.location.href = '/schedules/date/' + info.event.startStr;
+            }
+          },
 
-  // ✅ 日付クリックも追加！
-  dateClick: function(info) {
-    const clickedDate = info.dateStr;
-    window.location.href = `/schedules/date/${clickedDate}`;
-  }
-});
+          // イベント表示のカスタマイズ
+          eventContent: function(arg) {
+            if (arg.event.id.startsWith('sch-')) {
+              // 通常のスケジュールはタイトルをそのまま描画
+              return { html: arg.event.title };
+            }
+            // メモは太字で表示（ただしバーは非表示）
+            var el = document.createElement('div');
+            el.innerHTML = '<strong>' + arg.event.title + '</strong>';
+            return { domNodes: [ el ] };
+          },
 
-    calendar.render();
-  });
-</script>
+          // 描画後のセルカスタマイズ
+          dayCellDidMount: function(info) {
+            var dateStr = info.date.toISOString().substring(0,10);
+            // 日曜または祝日は .holiday クラスを追加
+            if (info.date.getDay() === 0 || holidayList.includes(dateStr)) {
+              info.el.classList.add('holiday');
+            }
+          }
+        }
+      );
+      calendar.render();
+    });
+  </script>
 {% endblock %}

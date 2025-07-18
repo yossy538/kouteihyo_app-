@@ -1,0 +1,53 @@
+<!-- templates/schedule/client_comment_form.html -->
+
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h3>
+    {{ schedule.date.strftime('%Y年%m月%d日') }} — 「{{ schedule.task_name }}」への依頼元コメント
+  </h3>
+
+  {# 編集用フォーム #}
+  <form method="POST" action="{{ url_for('main.edit_client_comment', id=schedule.id) }}">
+    <div class="mb-3">
+      <label for="client_person">依頼元担当者</label>
+      <input
+        type="text"
+        id="client_person"
+        name="client_person"
+        class="form-control"
+        value="{{ schedule.client_person or '' }}"
+      >
+    </div>
+
+    <div class="mb-3">
+      <label for="client_comment">依頼元コメント</label>
+      <textarea
+        id="client_comment"
+        name="client_comment"
+        class="form-control"
+        rows="4"
+      >{{ schedule.client_comment or '' }}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">保存</button>
+  </form>
+
+  {# 削除用フォーム（別フォームとして閉じる） #}
+  {% if schedule.client_comment %}
+  <form
+    method="POST"
+    action="{{ url_for('main.delete_client_comment', id=schedule.id) }}"
+    onsubmit="return confirm('本当にコメントを削除しますか？');"
+    class="mt-2"
+  >
+    <button type="submit" class="btn btn-danger">コメント削除</button>
+  </form>
+  {% endif %}
+
+  <a
+    href="{{ url_for('main.schedule_by_date', date_str=schedule.date.strftime('%Y-%m-%d')) }}"
+    class="btn btn-secondary mt-2"
+  >戻る</a>
+</div>
+{% endblock %}

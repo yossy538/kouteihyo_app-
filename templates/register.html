@@ -1,0 +1,31 @@
+<!-- templates/register.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5" style="max-width: 500px;">
+  <h2 class="mb-4">新規登録</h2>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    
+    <div class="mb-3">
+      {{ form.company_name.label }} {{ form.company_name(class="form-control") }}
+    </div>
+    <div class="mb-3">
+      {{ form.name.label }} {{ form.name(class="form-control") }}
+    </div>
+    <div class="mb-3">
+      {{ form.email.label }} {{ form.email(class="form-control") }}
+    </div>
+    <div class="mb-3">
+      {{ form.password.label }} {{ form.password(class="form-control") }}
+    </div>
+
+    <div class="text-end">
+      {{ form.submit(class="btn btn-primary") }}
+    </div>
+  </form>
+
+  <div class="mt-3">
+    <a href="{{ url_for('main.login') }}">← ログインに戻る</a>
+  </div>
+</div>
+{% endblock %}

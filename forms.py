@@ -1,16 +1,20 @@
-# forms.py
-
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
+from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField
 from wtforms.validators import DataRequired, Email
-from wtforms import SelectField, TextAreaField
-
 
 class LoginForm(FlaskForm):
     email = StringField('メールアドレス', validators=[DataRequired(), Email()])
     password = PasswordField('パスワード', validators=[DataRequired()])
     submit = SubmitField('ログイン')
-    
+
+class RegisterForm(FlaskForm):
+    company_name = StringField('会社名', validators=[DataRequired()])
+    name = StringField('担当者名', validators=[DataRequired()])  # ← これを残すならOK
+    email = StringField('メールアドレス', validators=[DataRequired(), Email()])
+    password = PasswordField('パスワード', validators=[DataRequired()])
+    submit = SubmitField('登録')
+
+
 class ScheduleForm(FlaskForm):
     time_slot = SelectField(
         '時間帯',

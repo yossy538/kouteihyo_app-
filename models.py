@@ -34,3 +34,20 @@ class Schedule(db.Model):
 
     client_person = db.Column(db.String(100))   # 依頼元の担当者
     client_comment = db.Column(db.String(255))  # 依頼元からの伝言や要望など
+    
+class SiteNote(db.Model):
+    __tablename__ = 'site_notes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    site_name = db.Column(db.String(255), unique=True, nullable=False)  # 現場名
+    note = db.Column(db.Text, nullable=True)  # 注意事項本文
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))  # 作成ユーザー
+
+# models.py
+class DateNote(db.Model):
+    __tablename__ = 'date_notes'
+    id             = db.Column(db.Integer, primary_key=True)
+    date           = db.Column(db.Date, nullable=False, unique=True)
+    client_person  = db.Column(db.String(255), nullable=True)
+    client_comment = db.Column(db.Text,    nullable=True)
+    created_by     = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)

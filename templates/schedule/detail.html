@@ -32,16 +32,16 @@
   </div>
 
   <!-- ✅ 新しく追加：依頼元コメント -->
-  <div class="mb-3">
+  <!-- <div class="mb-3">
     <label>依頼元コメント（菱輝金型様）</label>
     <textarea name="client_comment" class="form-control" {% if current_user.id != schedule.company_id %}disabled{% endif %}>{{ schedule.client_comment }}</textarea>
-  </div>
+  </div> -->
 
   <!-- ✅ 新しく追加：菱輝金型 担当者 -->
-  <div class="mb-3">
+  <!-- <div class="mb-3">
     <label>菱輝金型様 担当者</label>
     <input type="text" name="client_person" class="form-control" value="{{ schedule.client_person }}" {% if current_user.id != schedule.company_id %}disabled{% endif %}>
-  </div>
+  </div> -->
 
   {% if current_user.id == schedule.company_id %}
   <button type="submit" class="btn btn-primary">保存</button>

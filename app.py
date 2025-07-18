@@ -3,7 +3,7 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
-from models import db, User
+from models import db, User, SiteNote
 from routes import bp  # Blueprint を routes.py に書く前提
 from flask_migrate import Migrate
 
