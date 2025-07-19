@@ -57,13 +57,18 @@ def schedule_calendar():
         holiday_list=holidays
     )
 
+# routes.py より抜粋
 @bp.route('/api/schedules')
 @login_required
 def api_schedules():
     schedules = Schedule.query.all()
     notes     = DateNote.query.all()
     company_colors = {
-        1:'#ff9999', 2:'#99ccff', 3:'#99ff99', 4:'#ffff99', 5:'#cc99ff'
+        1: '#ff9999',  # 三空工業（赤）
+        2: '#99ccff',  # サトワ電工（青）
+        3: '#99ff99',  # 平和住建（緑）
+        4: '#ffff99',  # 浅野ダクト（黄）
+        5: '#cc99ff',  # 菱輝金型（紫）
     }
     events = []
 
@@ -71,28 +76,44 @@ def api_schedules():
     for s in schedules:
         start = s.date
         end   = s.end_date or s.date
+
+        # 会社名の頭2文字を略称にする例
+        abbrev = s.company.company_name[:2]
+
         events.append({
-            "id":     f"sch-{s.id}",
-            "title":  f"{s.time_slot} {s.task_name}",
-            "start":  start.isoformat(),
-            "end":    (end + timedelta(days=1)).isoformat(),
-            "color":  company_colors.get(s.company_id, '#cccccc'),
-            "textColor":"#000000",
+            "id":    f"sch-{s.id}",
+            "title": abbrev,                     # バー上に表示するのは略称のみ
+            "start": start.isoformat(),
+            "end":   (end + timedelta(days=1)).isoformat(),
+            "color": company_colors.get(s.company_id, '#cccccc'),
+            "textColor": "#000000",
             "allDay": True,
+
+            # ホバー時に出したい詳細情報は extendedProps へ
+            "extendedProps": {
+                "fullTitle": f"{s.time_slot} {s.task_name}",  
+                "site":      s.site_name,
+                "person":    s.person_in_charge
+            }
         })
 
-    # ── 日付メモを背景イベントで追加 ──
+    # ── 日付メモは「背景イベント」として追加 ──
     for n in notes:
         events.append({
-            "id":        f"memo-{n.id}",
-            "title":     "📌 菱輝金型工業様メモ有り",
-            "start":     n.date.isoformat(),
-            "allDay":    True,
-            "color":     "#ffcc00",   # 黄色
-            "textColor": "#000000"
+            "id":       f"memo-{n.id}",
+            "start":    n.date.isoformat(),
+            "allDay":   True,
+            "display":  "background",         # 背景表示モード
+            "color":    "#ffcc00",            # 黄色背景
+            # ツールチップ表示用にメモ内容も extendedProps
+            "extendedProps": {
+                "memo":   n.client_comment or '',
+                "person": n.client_person  or ''
+            }
         })
 
     return jsonify(events)
+
 
 
 @bp.route('/schedules/<int:id>', methods=['GET', 'POST'])
@@ -194,15 +215,30 @@ def delete_client_comment(id):
     flash('コメントを削除しました。', 'success')
     return redirect(url_for('main.schedule_by_date', date_str=schedule.date.strftime('%Y-%m-%d')))
 
+# routes.py の先頭で追加
+from sqlalchemy import or_
+
+# 省略…
+
 @bp.route('/schedules/date/<date_str>', methods=['GET','POST'])
 @login_required
 def schedule_by_date(date_str):
+    # 1) 日付パース
     selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-    schedules     = Schedule.query.filter_by(date=selected_date).all()
-    note          = DateNote.query.filter_by(date=selected_date).first()
 
+    # 2) 当日を含むスケジュールを取得（開始日 <= selected_date <= 終了日 or 終日扱い）
+    schedules = Schedule.query \
+        .filter(Schedule.date <= selected_date) \
+        .filter(or_(Schedule.end_date >= selected_date,
+                    Schedule.end_date.is_(None))) \
+        .all()
+
+    # 3) 日付メモを取得
+    note = DateNote.query.filter_by(date=selected_date).first()
+
+    # POST 処理（省略）…
     if request.method == 'POST':
-        # ── ① 作業会社側が編集したとき only ──
+        # (A) 作業会社の一括更新
         if current_user.company_name != '菱輝金型工業':
             for s in schedules:
                 if s.company_id == current_user.id:
@@ -210,10 +246,8 @@ def schedule_by_date(date_str):
                     s.task_name        = request.form[f'task_name_{s.id}']
                     s.person_in_charge = request.form[f'person_in_charge_{s.id}']
                     s.comment          = request.form[f'comment_{s.id}']
-
             flash('予定を更新しました', 'success')
-
-        # ── ② 発注元（菱輝金型工業）がコメントだけ編集するとき ──
+        # (B) 発注元のメモ更新／追加
         else:
             cp = request.form.get('date_client_person')
             cc = request.form.get('date_client_comment')
@@ -222,22 +256,28 @@ def schedule_by_date(date_str):
                 note.client_comment = cc
                 flash('メモを更新しました', 'success')
             else:
-                new = DateNote(
+                new_note = DateNote(
                     date           = selected_date,
                     client_person  = cp,
                     client_comment = cc,
                     created_by     = current_user.id
                 )
-                db.session.add(new)
+                db.session.add(new_note)
                 flash('メモを追加しました', 'success')
 
         db.session.commit()
         return redirect(url_for('main.schedule_by_date', date_str=date_str))
 
+    # 4) ヘッダー表示用に、最大終了日を計算して渡す
+    if schedules:
+        max_end_date = max((s.end_date or s.date) for s in schedules)
+    else:
+        max_end_date = selected_date
+
     return render_template(
         'schedule/by_date.html',
-        schedules     = schedules,
-        selected_date = selected_date,
-        date_note     = note
+        schedules      = schedules,
+        selected_date  = selected_date,
+        date_note      = note,
+        max_end_date   = max_end_date,   # ← ここをテンプレートで使います
     )
-

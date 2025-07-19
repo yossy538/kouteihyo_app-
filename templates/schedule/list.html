@@ -2,17 +2,28 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid mt-4">
   <h3>{{ current_user.company_name }} の工程表</h3>
 
-  {% for date, items in schedules_by_date.items() %}
-    <h5 class="mt-4">📅 {{ date }}</h5>
-    {% for s in items %}
-      <div class="card mb-2 p-2">
-        <strong>🕒 {{ s.time_slot }}</strong>：{{ s.task_name }}（{{ s.person_in_charge }}）<br>
-        <small class="text-muted">{{ s.comment }}</small>
+  {# 日付ごとにグリッド化 #}
+  <div class="row">
+    {% for date, items in schedules_by_date.items() %}
+      <div class="col-12 mb-4">
+        <h5 class="mb-3">📅 {{ date }}</h5>
+        <div class="row">
+          {% for s in items %}
+            <div class="col-12 col-sm-6 col-md-4 mb-3">
+              <div class="card h-100 p-2">
+                <strong>🕒 {{ s.time_slot }}</strong>：{{ s.task_name }}（{{ s.person_in_charge }}）<br>
+                {% if s.comment %}
+                  <small class="text-muted">{{ s.comment }}</small>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
       </div>
     {% endfor %}
-  {% endfor %}
+  </div>
 </div>
 {% endblock %}

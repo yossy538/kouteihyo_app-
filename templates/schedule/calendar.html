@@ -1,35 +1,17 @@
 <!-- templates/schedule/calendar.html -->
-
 {% extends 'base.html' %}
-
 {% block head %}
-  <!-- FullCalendar CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet" />
   <style>
-    /* カレンダー本体 */
-    #calendar {
-      max-width: 1000px;
-      margin: 40px auto;
-      height: 600px;
+    /* 折り返し／自動高さ */
+    .fc .fc-daygrid-event {
+      white-space: normal !important;
+      height: auto !important;
     }
-
-    /* 日曜ヘッダーを赤文字に */
-    .fc-col-header-cell.fc-day-sun .fc-col-header-cell-cushion {
-      color: red !important;
-      font-weight: bold;
+    .fc .fc-daygrid-event .fc-event-title {
+      overflow-wrap: break-word;
     }
-
-    /* 日曜セルの日付を赤文字に */
-    .fc-daygrid-day.fc-day-sun .fc-daygrid-day-number {
-      color: red !important;
-      font-weight: bold;
-    }
-
-    /* holiday クラスの日付を赤文字に */
-    .fc-daygrid-day.holiday .fc-daygrid-day-number {
-      color: red !important;
-      font-weight: bold;
-    }
+    /* 日曜・祝日の赤字は既存のまま */
   </style>
 {% endblock %}
 
@@ -39,61 +21,54 @@
 {% endblock %}
 
 {% block scripts %}
-  <!-- FullCalendar JS + 日本語ロケール -->
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales/ja.global.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // 祝日リスト（日付は YYYY-MM-DD 形式で記入）
-      var holidayList = [
-        // '2025-07-23', '2025-07-20', ...
-      ];
+      var holidayList = [ /* YYYY-MM-DD の祝日を入れる */ ];
 
       var calendar = new FullCalendar.Calendar(
         document.getElementById('calendar'),
         {
           locale: 'ja',
           initialView: 'dayGridMonth',
-          headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: ''
-          },
-          titleFormat: { year: 'numeric', month: 'numeric' },
-          dayHeaderFormat: { weekday: 'narrow' },
-          buttonText: { today: '今日' },
+          headerToolbar: { left:'prev,next today', center:'title', right:'' },
+          titleFormat: { year:'numeric', month:'numeric' },
+          dayHeaderFormat: { weekday:'narrow' },
+          buttonText: { today:'今日' },
           firstDay: 0,
           events: '/api/schedules',
 
-          // セルクリックで詳細画面へ
-          dateClick: function(info) {
+          // 日付セルをクリック → 日付詳細ページ
+          dateClick: info => {
             window.location.href = '/schedules/date/' + info.dateStr;
           },
 
-          // イベントクリック（メモのみ詳細画面へ）
-          eventClick: function(info) {
-            if (info.event.id.startsWith('memo-')) {
+          // イベントクリック → メモなら同様に詳細へ
+          eventClick: info => {
+            if(info.event.id.startsWith('memo-')){
               window.location.href = '/schedules/date/' + info.event.startStr;
             }
           },
 
-          // イベント表示のカスタマイズ
-          eventContent: function(arg) {
-            if (arg.event.id.startsWith('sch-')) {
-              // 通常のスケジュールはタイトルをそのまま描画
-              return { html: arg.event.title };
+          // ── ここでバーの見せ方をカスタマイズ ──
+          eventContent: arg => {
+            if(arg.event.id.startsWith('sch-')){
+              // 略称のテキスト
+              let div = document.createElement('div');
+              div.textContent = arg.event.title;
+              // ホバーで詳細タイトルを出す
+              div.setAttribute('title', arg.event.extendedProps.fullTitle);
+              return { domNodes: [ div ] };
             }
-            // メモは太字で表示（ただしバーは非表示）
-            var el = document.createElement('div');
-            el.innerHTML = '<strong>' + arg.event.title + '</strong>';
-            return { domNodes: [ el ] };
+            // 背景メモは何も描画しない（背景色のみ）
+            return { domNodes: [] };
           },
 
-          // 描画後のセルカスタマイズ
-          dayCellDidMount: function(info) {
-            var dateStr = info.date.toISOString().substring(0,10);
-            // 日曜または祝日は .holiday クラスを追加
-            if (info.date.getDay() === 0 || holidayList.includes(dateStr)) {
+          // セル描画後に日曜や祝日へクラス追加
+          dayCellDidMount: info => {
+            let d = info.date, s = d.toISOString().slice(0,10);
+            if(d.getDay()===0 || holidayList.includes(s)){
               info.el.classList.add('holiday');
             }
           }
