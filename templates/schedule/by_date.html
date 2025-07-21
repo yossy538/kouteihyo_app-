@@ -4,7 +4,6 @@
 {% block content %}
 <div class="container-fluid mt-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
-       {# 終了日が selected_date と異なれば ～ 付きで表示 #}
     {% if max_end_date and max_end_date != selected_date %}
       <h3>
         {{ selected_date.strftime('%Y年%m月%d日') }}
@@ -20,15 +19,19 @@
 
   {# ─── 日付全体のメモフォーム／表示 ─── #}
   {% if current_user.company_name == '菱輝金型工業' %}
-    <form method="POST" class="card mb-4">
-      <div class="card-body">
-        <h5>日付メモの編集</h5>
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5>日付メモの編集</h5>
+
+      {# ■ 保存用フォーム #}
+      <form method="POST">
+        {{ delete_form.csrf_token }}
         <div class="mb-3">
           <label for="date_client_person">依頼元担当者</label>
           <input
             id="date_client_person"
             type="text"
-            name="date_client_person"
+            name="client_person"
             class="form-control form-control-lg"
             value="{{ date_note.client_person if date_note else '' }}"
           >
@@ -37,78 +40,91 @@
           <label for="date_client_comment">日付メモ／コメント</label>
           <textarea
             id="date_client_comment"
-            name="date_client_comment"
+            name="client_comment"
             class="form-control form-control-lg"
             rows="3"
           >{{ date_note.client_comment if date_note else '' }}</textarea>
         </div>
-        <button type="submit" class="btn btn-primary btn-lg w-100">メモを保存</button>
-      </div>
-    </form>
-  {% else %}
-    {% if date_note %}
-      <div class="alert alert-info mb-4">
-        <strong>日付メモ：</strong> {{ date_note.client_comment }}<br>
-        <small>依頼元担当：{{ date_note.client_person }}</small>
-      </div>
-    {% endif %}
+        <button type="submit" class="btn btn-primary btn-lg w-100">
+          メモを保存
+        </button>
+      </form>
+
+      {% if date_note %}
+        <hr class="my-3">
+        {# ■ 削除用フォーム #}
+        <form
+          method="POST"
+          action="{{ url_for('main.delete_client_comment', id=date_note.id) }}"
+          onsubmit="return confirm('本当にこのメモを削除しますか？');"
+        >
+          {{ delete_form.csrf_token }}
+          <button type="submit" class="btn btn-outline-danger btn-lg w-100">
+            メモを削除
+          </button>
+        </form>
+      {% endif %}
+
+    </div>
+  </div>
+{% else %}
+  {% if date_note %}
+    <div class="alert alert-info mb-4">
+      <strong>日付メモ：</strong> {{ date_note.client_comment }}<br>
+      <small>依頼元担当：{{ date_note.client_person }}</small>
+    </div>
   {% endif %}
+{% endif %}
+
 
   {# ─── スケジュール一覧 ─── #}
-<div class="row">
-  {% for s in schedules %}
-    <div class="col-12 col-sm-6 col-md-4 mb-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <h5>{{ s.task_name }}（{{ s.time_slot }}） @ {{ s.site_name }}</h5>
-          <p>🏢 会社：{{ s.company.company_name }}</p>
-          <p>担当：{{ s.person_in_charge }}</p>
-          <p>🔧 作業詳細：{{ s.comment or '（なし）' }}</p>
+  <div class="row">
+    {% for s in schedules %}
+      <div class="col-12 col-sm-6 col-md-4 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5>{{ s.task_name }}（{{ s.time_slot }}） @ {{ s.site_name }}</h5>
+            <p>🏢 会社：{{ s.company.company_name }}</p>
+            <p>担当：{{ s.person_in_charge }}</p>
+            <p>🔧 作業詳細：{{ s.comment or '（なし）' }}</p>
 
-          {# ── 自社の予定なら「削除」ボタンを表示 ── #}
-          {% if current_user.id == s.company_id and current_user.company_name != '菱輝金型工業' %}
-            <form
-              method="POST"
-              action="{{ url_for('main.schedule_delete', id=s.id) }}"
-              onsubmit="return confirm('本当に削除しますか？');"
-              class="mt-2"
-            >
-              <button type="submit" class="btn btn-danger btn-sm w-100">
-                🗑️ 削除
-              </button>
-            </form>
-          {% endif %}
+            {% if current_user.id == s.company_id and current_user.company_name != '菱輝金型工業' %}
+              <form method="POST"
+                    action="{{ url_for('main.schedule_delete', id=s.id) }}"
+                    onsubmit="return confirm('本当に削除しますか？');"
+                    class="mt-2">
+                <button type="submit" class="btn btn-danger btn-sm w-100">
+                  🗑️ 削除
+                </button>
+              </form>
+            {% endif %}
 
-          {# ── 発注元（菱輝金型工業）用コメント操作 ── #}
-          {% if current_user.company_name == '菱輝金型工業' %}
-            <a
-              href="{{ url_for('main.edit_client_comment', id=s.id) }}"
-              class="btn btn-sm btn-outline-primary mt-2 w-100"
-            >スケジュールメモ編集</a>
-            <form
-              method="POST"
-              action="{{ url_for('main.delete_client_comment', id=s.id) }}"
-              class="mt-2"
-              onsubmit="return confirm('本当に削除しますか？');"
-            >
-              <button class="btn btn-sm btn-outline-danger w-100">
-                スケジュールメモ削除
-              </button>
-            </form>
-          {% else %}
-            <div class="mt-3">
-              <p>📝 菱輝金型工業様コメント：{{ s.client_comment or '（なし）' }}</p>
-              <p>👤 菱輝金型工業ご担当者：{{ s.client_person or '（未記入）' }}</p>
-            </div>
-          {% endif %}
-
+            {% if current_user.company_name == '菱輝金型工業' %}
+              <a href="{{ url_for('main.edit_client_comment', id=s.id) }}"
+                 class="btn btn-sm btn-outline-primary mt-2 w-100">
+                スケジュールメモ編集
+              </a>
+              <form method="POST"
+                    action="{{ url_for('main.delete_client_comment', id=s.id) }}"
+                    onsubmit="return confirm('本当に削除しますか？');"
+                    class="mt-2">
+                <button class="btn btn-sm btn-outline-danger w-100">
+                  スケジュールメモ削除
+                </button>
+              </form>
+            {% else %}
+              <div class="mt-3">
+                <p>📝 菱輝金型工業様コメント：{{ s.client_comment or '（なし）' }}</p>
+                <p>👤 菱輝金型工業ご担当者：{{ s.client_person or '（未記入）' }}</p>
+              </div>
+            {% endif %}
+          </div>
         </div>
       </div>
-    </div>
-  {% else %}
-    <p class="text-center w-100">予定は登録されていません。</p>
-  {% endfor %}
-</div>
+    {% else %}
+      <p class="text-center w-100">予定は登録されていません。</p>
+    {% endfor %}
+  </div>
 
 
   {# ─── 作業会社向け：一括編集＆新規追加 ─── #}

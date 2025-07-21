@@ -1,12 +1,15 @@
+# routes.py
+
+
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User, Schedule, DateNote
-from forms import LoginForm
+from forms import LoginForm, AdminUserCreateForm, DeleteNoteForm   # ← DeleteNoteForm を追加
 from collections import defaultdict
 from datetime import datetime, date, timedelta
-from sqlalchemy import or_
+from sqlalchemy import or_, extract
 from werkzeug.security import check_password_hash, generate_password_hash
-import jpholiday 
+import jpholiday
 
 bp = Blueprint('main', __name__)
 
@@ -42,13 +45,37 @@ def schedule_list():
         schedules_by_date[s.date.strftime('%Y-%m-%d')].append(s)
     return render_template('schedule/list.html', schedules_by_date=schedules_by_date)
 
+
 @bp.route('/schedules/calendar')
 @login_required
 def schedule_calendar():
     today = datetime.today()
     year, month = today.year, today.month
-    holiday_list = [d.strftime('%Y-%m-%d') for d, _ in jpholiday.month_holidays(year, month)]
-    return render_template('schedule/calendar.html', holiday_list=holiday_list)
+
+    # 祝日
+    holiday_list = [
+        d.strftime('%Y-%m-%d')
+        for d, _ in jpholiday.month_holidays(year, month)
+    ]
+
+    # 発注元ユーザーを取得
+    client = User.query.filter_by(company_name='菱輝金型工業').first()
+    client_id = client.id if client else None
+
+    # 当月かつ発注元が作成したメモだけ取得
+    notes = DateNote.query \
+        .filter(extract('year',  DateNote.date) == year) \
+        .filter(extract('month', DateNote.date) == month) \
+        .filter_by(created_by=client_id) \
+        .all()
+
+    note_list = [n.date.strftime('%Y-%m-%d') for n in notes]
+
+    return render_template(
+        'schedule/calendar.html',
+        holiday_list=holiday_list,
+        note_list=note_list
+    )
 
 @bp.route('/api/schedules')
 @login_required
@@ -83,7 +110,7 @@ def api_schedules():
             "start": n.date.isoformat(),
             "allDay": True,
             "display": "background",  # 背景モード
-            "color": "#ffcc00",
+            "color": "#FF90BB",
             "extendedProps": {
                 "memo": n.client_comment or '',
                 "person": n.client_person or ''
@@ -140,19 +167,7 @@ def schedule_delete(id):
         flash('自社の予定のみ削除できます', 'danger')
     return redirect(url_for('main.schedule_by_date', date_str=schedule.date.strftime('%Y-%m-%d')))
 
-@bp.route('/register', methods=['GET', 'POST'])
-def register():
-    form = LoginForm()  # 実際は RegisterForm
-    if form.validate_on_submit():
-        if User.query.filter_by(email=form.email.data).first():
-            flash('…', 'danger')
-            return redirect(url_for('main.register'))
-        user = User(...)
-        db.session.add(user)
-        db.session.commit()
-        flash('…', 'success')
-        return redirect(url_for('main.login'))
-    return render_template('register.html', form=form)
+
 
 @bp.route('/schedules/client/comment/<int:id>', methods=['GET','POST'])
 @login_required
@@ -202,29 +217,118 @@ def delete_client_comment(id):
 @bp.route('/schedules/date/<date_str>', methods=['GET','POST'])
 @login_required
 def schedule_by_date(date_str):
+    # URL の date_str を date 型に変換
     selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    # その日にまたがる予定を取得
     schedules = (
         Schedule.query
         .filter(Schedule.date <= selected_date)
         .filter(or_(Schedule.end_date >= selected_date, Schedule.end_date.is_(None)))
         .all()
     )
+
+    # 既存の日付メモ（DateNote）を取得
     note = DateNote.query.filter_by(date=selected_date).first()
+
     if request.method == 'POST':
-        if current_user.company_name != '菱輝金型工業':
-            # 一括更新…
-            flash('予定を更新しました', 'success')
-        else:
-            # メモ更新／追加…
+        # 発注元のみメモの更新／追加を許可
+        if current_user.company_name == '菱輝金型工業':
+            person  = request.form.get('client_person', '').strip()
+            comment = request.form.get('client_comment', '').strip()
+
+            if note:
+                # 既存メモを更新
+                note.client_person  = person
+                note.client_comment = comment
+            else:
+                # 新規メモを作成
+                note = DateNote(
+                    date           = selected_date,
+                    client_person  = person,
+                    client_comment = comment,
+                    created_by     = current_user.id
+                )
+                db.session.add(note)
+
+            db.session.commit()
             flash('メモを更新しました', 'success')
-        db.session.commit()
+        else:
+            # 協力会社側の一括更新ロジックがあればここに（省略）
+            flash('予定を更新しました', 'success')
+            db.session.commit()
+
         return redirect(url_for('main.schedule_by_date', date_str=date_str))
-    max_end_date = max((s.end_date or s.date) for s in schedules) if schedules else selected_date
+
+    # GET 時：max_end_date を計算して詳細ページを表示
+    max_end_date = (
+        max((s.end_date or s.date) for s in schedules)
+        if schedules else selected_date
+    )
+
+    # DeleteNoteForm を生成して渡す
+    delete_form = DeleteNoteForm()
+
     return render_template(
         'schedule/by_date.html',
         schedules     = schedules,
         selected_date = selected_date,
         date_note     = note,
-        max_end_date  = max_end_date
+        max_end_date  = max_end_date,
+        delete_form   = delete_form   # ← ここでテンプレートに渡す
     )
 
+
+@bp.route('/')
+def index():
+    
+    # ログイン済みならカレンダー、それ以外はログイン画面へ
+    if current_user.is_authenticated:
+        return redirect(url_for('main.schedule_calendar'))
+    return redirect(url_for('main.login'))
+
+# routes.py に追記
+@bp.route('/admin/users/new', methods=['GET','POST'])
+@login_required
+def admin_create_user():
+    # ロールチェック
+    if current_user.role != 'admin':
+        flash('権限がありません', 'danger')
+        return redirect(url_for('main.schedule_calendar'))
+
+    form = AdminUserCreateForm()
+    if form.validate_on_submit():
+        user = User(
+            company_name = form.company_name.data,
+            email        = form.email.data,
+            password_hash= generate_password_hash(form.password.data),
+            role         = form.role.data
+        )
+        db.session.add(user)
+        db.session.commit()
+        flash(f'{user.company_name} のアカウントを作成しました', 'success')
+        # TODO: 初期パスワードをメール送信するならここで send_mail() を呼び出し
+        return redirect(url_for('main.admin_list_users'))
+
+    return render_template('admin/user_new.html', form=form)
+
+@bp.route('/admin/users')
+@login_required
+def admin_list_users():
+    if current_user.role != 'admin':
+        return redirect(url_for('main.schedule_calendar'))
+    users = User.query.order_by(User.role.desc(), User.company_name).all()
+    return render_template('admin/user_list.html', users=users)
+
+@bp.route('/api/note_list')
+@login_required
+def api_note_list():
+    start = request.args.get('start')
+    end   = request.args.get('end')
+    notes = DateNote.query.filter(
+        DateNote.date >= start,
+        DateNote.date <= end,
+        DateNote.created_by == current_user.id
+    ).all()
+    return jsonify({
+      'note_dates': [note.date.isoformat() for note in notes]
+    })

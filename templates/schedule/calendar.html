@@ -1,9 +1,15 @@
 <!-- templates/schedule/calendar.html -->
 {% extends 'base.html' %}
+
 {% block head %}
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet" />
+  {{ super() }}
+  <!-- FullCalendar CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css"
+    rel="stylesheet"
+  />
   <style>
-    /* 折り返し／自動高さ */
+    /* イベント折り返し／高さ自動調整 */
     .fc .fc-daygrid-event {
       white-space: normal !important;
       height: auto !important;
@@ -11,64 +17,26 @@
     .fc .fc-daygrid-event .fc-event-title {
       overflow-wrap: break-word;
     }
-    /* 日曜・祝日の赤字は既存のまま */
+    /* 祝日セルの背景色 */
+    .fc .holiday {
+      background-color: #fff5cc;
+    }
   </style>
 {% endblock %}
 
 {% block content %}
   <h2>稲沢工場D棟 の工程表</h2>
-  <div id="calendar"></div>
+  <!-- ここで holiday_list を data-holidays に JSON として渡す -->
+  <div
+    id="calendar"
+    data-holidays='{{ holiday_list|tojson }}'
+  ></div>
 {% endblock %}
 
 {% block scripts %}
+  {{ super() }}
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales/ja.global.min.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var holidayList = [ /* YYYY-MM-DD の祝日を入れる */ ];
-
-      var calendar = new FullCalendar.Calendar(
-        document.getElementById('calendar'),
-        {
-          locale: 'ja',
-          initialView: 'dayGridMonth',
-          headerToolbar: { left:'prev,next today', center:'title', right:'' },
-          titleFormat: { year:'numeric', month:'numeric' },
-          dayHeaderFormat: { weekday:'narrow' },
-          buttonText: { today:'今日' },
-          firstDay: 0,
-          events: '/api/schedules',
-
-          dateClick: info => {
-            window.location.href = '/schedules/date/' + info.dateStr;
-          },
-
-          eventClick: info => {
-            if(info.event.id.startsWith('memo-')){
-              window.location.href = '/schedules/date/' + info.event.startStr;
-            }
-          },
-
-          eventContent: arg => {
-            if(arg.event.id.startsWith('sch-')){
-              let div = document.createElement('div');
-              div.textContent = arg.event.title;
-              div.setAttribute('title', arg.event.extendedProps.fullTitle);
-              return { domNodes: [ div ] };
-            }
-            return { domNodes: [] };
-          },
-
-          dayCellDidMount: info => {
-            let d = info.date, s = d.toISOString().slice(0,10);
-            if(d.getDay()===0 || holidayList.includes(s)){
-              info.el.classList.add('holiday');
-            }
-          }
-        }
-      );
-
-      calendar.render();
-    });
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
+  <script src="{{ url_for('static', filename='js/calendar.js') }}"></script>
 {% endblock %}
+
