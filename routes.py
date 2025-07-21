@@ -324,10 +324,13 @@ def admin_list_users():
 def api_note_list():
     start = request.args.get('start')
     end   = request.args.get('end')
+    # 変更後：常に「菱輝金型工業」ユーザーが作成したメモを返す
+    client = User.query.filter_by(company_name='菱輝金型工業').first()
+    client_id = client.id if client else None
     notes = DateNote.query.filter(
         DateNote.date >= start,
         DateNote.date <= end,
-        DateNote.created_by == current_user.id
+        DateNote.created_by == client_id
     ).all()
     return jsonify({
       'note_dates': [note.date.isoformat() for note in notes]
