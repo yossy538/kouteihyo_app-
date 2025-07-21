@@ -39,33 +39,26 @@
           firstDay: 0,
           events: '/api/schedules',
 
-          // 日付セルをクリック → 日付詳細ページ
           dateClick: info => {
             window.location.href = '/schedules/date/' + info.dateStr;
           },
 
-          // イベントクリック → メモなら同様に詳細へ
           eventClick: info => {
             if(info.event.id.startsWith('memo-')){
               window.location.href = '/schedules/date/' + info.event.startStr;
             }
           },
 
-          // ── ここでバーの見せ方をカスタマイズ ──
           eventContent: arg => {
             if(arg.event.id.startsWith('sch-')){
-              // 略称のテキスト
               let div = document.createElement('div');
               div.textContent = arg.event.title;
-              // ホバーで詳細タイトルを出す
               div.setAttribute('title', arg.event.extendedProps.fullTitle);
               return { domNodes: [ div ] };
             }
-            // 背景メモは何も描画しない（背景色のみ）
             return { domNodes: [] };
           },
 
-          // セル描画後に日曜や祝日へクラス追加
           dayCellDidMount: info => {
             let d = info.date, s = d.toISOString().slice(0,10);
             if(d.getDay()===0 || holidayList.includes(s)){
@@ -74,6 +67,7 @@
           }
         }
       );
+
       calendar.render();
     });
   </script>
