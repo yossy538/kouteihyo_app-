@@ -186,7 +186,9 @@ def edit_client_comment(id):
         schedule.client_comment = request.form.get('client_comment', '')
         db.session.commit()
         flash('発注元コメントを更新しました', 'success')
-        return redirect(url_for('main.schedule_calendar'))
+         # 更新後は「日付詳細」ページに戻す
+        date_str = schedule.date.strftime('%Y-%m-%d')
+        return redirect(url_for('main.schedule_by_date', date_str=date_str))
 
     # GET のときはフォーム画面を表示
     return render_template(
@@ -253,9 +255,24 @@ def schedule_by_date(date_str):
             db.session.commit()
             flash('メモを更新しました', 'success')
         else:
-            # 協力会社側の一括更新ロジックがあればここに（省略）
-            flash('予定を更新しました', 'success')
+            # 協力会社側の一括スケジュール更新ロジック
+            for s in schedules:
+                if s.company_id == current_user.id:
+                    s.person_in_charge = request.form.get(
+                        f'person_in_charge_{s.id}', s.person_in_charge
+                    )
+                    s.time_slot = request.form.get(
+                        f'time_slot_{s.id}', s.time_slot
+                    )
+                    s.task_name = request.form.get(
+                        f'task_name_{s.id}', s.task_name
+                    )
+                    # ← ここでコメントも更新する
+                    s.comment = request.form.get(
+                        f'comment_{s.id}', s.comment
+                    )
             db.session.commit()
+            flash('予定を更新しました', 'success')
 
         return redirect(url_for('main.schedule_by_date', date_str=date_str))
 

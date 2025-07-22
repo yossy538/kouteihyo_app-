@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>500 - サーバーエラー</h2>
+<p>予期しないエラーが発生しました。再度お試しください。</p>
+<a href="{{ url_for('main.schedule_calendar') }}" class="btn btn-primary">カレンダーに戻る</a>
+{% endblock %}

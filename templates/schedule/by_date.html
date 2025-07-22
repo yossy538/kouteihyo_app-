@@ -165,11 +165,11 @@
             </div>
             <div class="mb-2">
               <strong>コメント:</strong>
-              <textarea
-                name="comment_{{ s.id }}"
-                class="form-control form-control-lg"
-                rows="2"
-              >{{ s.comment }}</textarea>
+                <textarea
+                  name="comment_{{ s.id }}"
+                  class="form-control form-control-lg"
+                  rows="2"
+                >{{ s.comment or '' }}</textarea>
             </div>
           </div>
         </div>

@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>403 - アクセスが拒否されました</h2>
+<p>このページを表示する権限がありません。</p>
+<a href="{{ url_for('main.schedule_calendar') }}" class="btn btn-primary">カレンダーに戻る</a>
+{% endblock %}
