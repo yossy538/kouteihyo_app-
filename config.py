@@ -1,5 +1,7 @@
+# config.py
 import os
 import secrets
+from datetime import timedelta 
 
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
@@ -13,7 +15,8 @@ class Config:
     REMEMBER_COOKIE_SECURE = True           # remember meもHTTPSのみ
     REMEMBER_COOKIE_HTTPONLY = True         # remember meもJSから見えない
 
-
+  # ✅ セッション有効期限の設定（ステップ10）
+    PERMANENT_SESSION_LIFETIME = timedelta(minutes=120)  # 120分で自動ログアウト
 class DevelopmentConfig(Config):
     DEBUG = True
     WTF_CSRF_ENABLED = False

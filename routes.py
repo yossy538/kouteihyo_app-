@@ -9,7 +9,9 @@ from collections import defaultdict
 from datetime import datetime, date, timedelta
 from sqlalchemy import or_, extract
 from werkzeug.security import check_password_hash, generate_password_hash
+from flask import session
 import jpholiday
+from itertools import groupby
 
 bp = Blueprint('main', __name__)
 
@@ -22,9 +24,11 @@ def login():
         user = User.query.filter_by(email=form.email.data).first()
         if user and check_password_hash(user.password_hash, form.password.data):
             login_user(user)
+            session.permanent = True  # ✅ セッションの有効期限を config.py に従って有効にする
             return redirect(url_for('main.schedule_calendar'))
         flash('メールアドレスまたはパスワードが違います', 'danger')
     return render_template('login.html', form=form)
+
 
 @bp.route('/logout')
 @login_required
@@ -352,3 +356,4 @@ def api_note_list():
     return jsonify({
       'note_dates': [note.date.isoformat() for note in notes]
     })
+

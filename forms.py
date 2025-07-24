@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField
-from wtforms.validators import DataRequired, Email, Length
+from wtforms.validators import DataRequired, Email, Length, Regexp
 
 # 日付メモ削除用フォーム（変更なし）
 class DeleteNoteForm(FlaskForm):
@@ -9,14 +9,13 @@ class DeleteNoteForm(FlaskForm):
 
 
 class LoginForm(FlaskForm):
-    """ログインフォーム"""
     email = StringField(
         'メールアドレス',
         validators=[DataRequired(), Email(), Length(max=100)]
     )
     password = PasswordField(
         'パスワード',
-        validators=[DataRequired(), Length(min=8, max=100)]
+        validators=[DataRequired()]  # ← Length(min=8) を一時削除
     )
     submit = SubmitField('ログイン')
 
@@ -33,7 +32,14 @@ class AdminUserCreateForm(FlaskForm):
     )
     password = PasswordField(
         '初期パスワード',
-        validators=[DataRequired(), Length(min=8, max=100)]
+        validators=[
+            DataRequired(),
+            Length(min=8, max=100, message='8文字以上で入力してください'),
+            Regexp(
+                r'^(?=.*[a-zA-Z])(?=.*\d).+$',
+                message='英字と数字の両方を含めてください'
+            )
+        ]
     )
     role = SelectField(
         'ロール',
