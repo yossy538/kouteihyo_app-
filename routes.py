@@ -1,22 +1,23 @@
 # routes.py
 
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import (
+    Blueprint, render_template, redirect, url_for,
+    flash, request, jsonify, session
+)
 from flask_login import login_user, logout_user, login_required, current_user
-from models import db, User, Schedule, DateNote
-from forms import LoginForm, AdminUserCreateForm, DeleteNoteForm   # ← DeleteNoteForm を追加
-from collections import defaultdict
-from datetime import datetime, date, timedelta
 from sqlalchemy import or_, extract
-from werkzeug.security import check_password_hash, generate_password_hash
-from flask import session
 import jpholiday
-from itertools import groupby
+from collections import defaultdict
+from datetime import datetime, timedelta
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from .models import db, User, Schedule, DateNote, Company
+from .forms import LoginForm, AdminUserCreateForm, DeleteNoteForm
 
 bp = Blueprint('main', __name__)
 
-
-
+# ログイン
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
@@ -24,140 +25,139 @@ def login():
         user = User.query.filter_by(email=form.email.data).first()
         if user and check_password_hash(user.password_hash, form.password.data):
             login_user(user)
-            session.permanent = True  # ✅ セッションの有効期限を config.py に従って有効にする
+            session.permanent = True
             return redirect(url_for('main.schedule_calendar'))
         flash('メールアドレスまたはパスワードが違います', 'danger')
     return render_template('login.html', form=form)
 
-
+# ログアウト
 @bp.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('main.login'))
 
+# 一覧表示
 @bp.route('/schedules')
 @login_required
 def schedule_list():
     if current_user.role == 'admin':
         schedules = Schedule.query.order_by(Schedule.date.asc()).all()
     else:
-        schedules = Schedule.query.filter_by(company_id=current_user.id).order_by(Schedule.date.asc()).all()
-
+        schedules = (
+            Schedule.query
+            .filter_by(company_id=current_user.company_id)
+            .order_by(Schedule.date.asc())
+            .all()
+        )
     schedules_by_date = defaultdict(list)
     for s in schedules:
         schedules_by_date[s.date.strftime('%Y-%m-%d')].append(s)
     return render_template('schedule/list.html', schedules_by_date=schedules_by_date)
 
-
+# カレンダー表示
 @bp.route('/schedules/calendar')
 @login_required
 def schedule_calendar():
     today = datetime.today()
     year, month = today.year, today.month
-
     # 祝日
-    holiday_list = [
-        d.strftime('%Y-%m-%d')
-        for d, _ in jpholiday.month_holidays(year, month)
-    ]
-
-    # 発注元ユーザーを取得
-    client = User.query.filter_by(company_name='菱輝金型工業').first()
-    client_id = client.id if client else None
-
-    # 当月かつ発注元が作成したメモだけ取得
-    notes = DateNote.query \
-        .filter(extract('year',  DateNote.date) == year) \
-        .filter(extract('month', DateNote.date) == month) \
-        .filter_by(created_by=client_id) \
+    holiday_list = [d.strftime('%Y-%m-%d') for d, _ in jpholiday.month_holidays(year, month)]
+    # クライアント会社のメモ取得
+    client_company = Company.query.filter_by(name='菱輝金型工業').first()
+    client_ids = [u.id for u in client_company.users] if client_company else []
+    notes = (
+        DateNote.query
+        .filter(extract('year', DateNote.date)==year)
+        .filter(extract('month', DateNote.date)==month)
+        .filter(DateNote.created_by.in_(client_ids))
         .all()
-
+    )
     note_list = [n.date.strftime('%Y-%m-%d') for n in notes]
-
     return render_template(
         'schedule/calendar.html',
         holiday_list=holiday_list,
         note_list=note_list
     )
 
+# API: スケジュール一覧
 @bp.route('/api/schedules')
 @login_required
 def api_schedules():
     schedules = Schedule.query.all()
-    notes     = DateNote.query.all()
-    company_colors = {1:'#ff9999',2:'#99ccff',3:'#99ff99',4:'#ffff99',5:'#cc99ff'}
+    notes = DateNote.query.all()
+    colors = {1:'#ff9999',2:'#99ccff',3:'#99ff99',4:'#ffff99',5:'#cc99ff'}
     events = []
-    # 通常スケジュール
     for s in schedules:
         start = s.date
-        end   = s.end_date or s.date
-        abbrev = s.company.company_name[:2]
+        end = s.end_date or s.date
+        abbrev = s.company.name[:2]
         events.append({
-            "id": f"sch-{s.id}",
-            "title": abbrev,
-            "start": start.isoformat(),
-            "end": (end + timedelta(days=1)).isoformat(),
-            "color": company_colors.get(s.company_id, '#cccccc'),
-            "textColor": "#000",
-            "allDay": True,
-            "extendedProps": {
-                "fullTitle": f"{s.time_slot} {s.task_name}",
-                "site": s.site_name,
-                "person": s.person_in_charge
+            'id': f'sch-{s.id}',
+            'title': abbrev,
+            'start': start.isoformat(),
+            'end': (end + timedelta(days=1)).isoformat(),
+            'color': colors.get(s.company_id, '#cccccc'),
+            'allDay': True,
+            'extendedProps': {
+                'fullTitle': f"{s.time_slot} {s.task_name}",
+                'site': s.site_name,
+                'person': s.person_in_charge
             }
         })
-    # 日付メモ（背景表示）
+    # メモ（背景表示）
     for n in notes:
         events.append({
-            "id": f"memo-{n.id}",
-            "start": n.date.isoformat(),
-            "allDay": True,
-            "display": "background",  # 背景モード
-            "color": "#FF90BB",
-            "extendedProps": {
-                "memo": n.client_comment or '',
-                "person": n.client_person or ''
+            'id': f'memo-{n.id}',
+            'start': n.date.isoformat(),
+            'display': 'background',
+            'color': '#FF90BB',
+            'extendedProps': {
+                'memo': n.client_comment or '',
+                'person': n.client_person or ''
             }
         })
     return jsonify(events)
 
-@bp.route('/schedules/<int:id>', methods=['GET', 'POST'])
+# 詳細表示・更新
+@bp.route('/schedules/<int:id>', methods=['GET','POST'])
 @login_required
 def schedule_detail(id):
     schedule = Schedule.query.get_or_404(id)
-    if request.method == 'POST' and current_user.id == schedule.company_id:
-        schedule.time_slot        = request.form['time_slot']
-        schedule.task_name        = request.form['task_name']
+    if request.method == 'POST' and current_user.company_id == schedule.company_id:
+        schedule.time_slot = request.form['time_slot']
+        schedule.task_name = request.form['task_name']
         schedule.person_in_charge = request.form['person_in_charge']
-        schedule.comment          = request.form['comment']
+        schedule.comment = request.form['comment']
         db.session.commit()
         flash('予定を更新しました', 'success')
         return redirect(url_for('main.schedule_calendar'))
     return render_template('schedule/detail.html', schedule=schedule)
 
+# 追加
 @bp.route('/schedules/add', methods=['POST'])
 @login_required
 def schedule_add():
-    date_val     = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+    date_val = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
     end_date_str = request.form.get('end_date')
-    end_date     = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
     new = Schedule(
-        site_name        = request.form['site_name'],
-        date             = date_val,
-        end_date         = end_date,
-        company_id       = current_user.id,
-        time_slot        = request.form['time_slot'],
-        task_name        = request.form['task_name'],
-        person_in_charge = request.form['person_in_charge'],
-        comment          = request.form.get('comment'),
-        client_person    = request.form.get('client_person'),
-        client_comment   = request.form.get('client_comment'),
-        created_by       = current_user.id
+        site_name=request.form['site_name'],
+        date=date_val,
+        end_date=end_date,
+        company_id=current_user.company_id,
+        time_slot=request.form['time_slot'],
+        task_name=request.form['task_name'],
+        person_in_charge=request.form['person_in_charge'],
+        comment=request.form.get('comment'),
+        client_person=request.form.get('client_person'),
+        client_comment=request.form.get('client_comment'),
+        created_by=current_user.id
     )
     db.session.add(new)
     db.session.commit()
     return redirect(url_for('main.schedule_by_date', date_str=date_val.strftime('%Y-%m-%d')))
+
 
 @bp.route('/schedules/delete/<int:id>', methods=['POST'])
 @login_required

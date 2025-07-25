@@ -1,25 +1,35 @@
+<!-- templates/admin/user_new.html  -->
+
 {% extends 'base.html' %}
+{% block title %}ユーザー作成{% endblock %}
+
 {% block content %}
-<div class="container" style="max-width: 500px;">
-  <h2>新規ユーザー作成</h2>
-  <form method="POST">
+<div class="container mt-4">
+  <h2>ユーザー作成</h2>
+  <form method="post">
     {{ form.hidden_tag() }}
     <div class="mb-3">
-      {{ form.company_name.label }} {{ form.company_name(class="form-control") }}
+      {{ form.company_id.label(class="form-label") }}
+      {{ form.company_id(class="form-select") }}
     </div>
     <div class="mb-3">
-      {{ form.email.label }} {{ form.email(class="form-control") }}
+      {{ form.display_name.label(class="form-label") }}
+      {{ form.display_name(class="form-control") }}
     </div>
     <div class="mb-3">
-      {{ form.password.label }} {{ form.password(class="form-control") }}
+      {{ form.email.label(class="form-label") }}
+      {{ form.email(class="form-control") }}
     </div>
     <div class="mb-3">
-      {{ form.role.label }} {{ form.role(class="form-select") }}
+      {{ form.password.label(class="form-label") }}
+      {{ form.password(class="form-control") }}
     </div>
     <div class="mb-3">
-      {{ form.submit(class="btn btn-success") }}
-      <a href="{{ url_for('main.admin_list_users') }}" class="btn btn-secondary">キャンセル</a>
+      {{ form.role.label(class="form-label") }}
+      {{ form.role(class="form-select") }}
     </div>
+    <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+    <a href="{{ url_for('main.admin_list_users') }}" class="btn btn-secondary ms-2">キャンセル</a>
   </form>
 </div>
 {% endblock %}

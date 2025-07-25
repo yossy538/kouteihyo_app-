@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="container-fluid mt-4">
-  <h3>{{ current_user.company_name }} の工程表</h3>
+  <h3>{{ current_user.company.name }} の工程表</h3>
 
   {# 日付ごとにグリッド化 #}
   <div class="row">
@@ -14,10 +14,14 @@
           {% for s in items %}
             <div class="col-12 col-sm-6 col-md-4 mb-3">
               <div class="card h-100 p-2">
-                <strong>🕒 {{ s.time_slot }}</strong>：{{ s.task_name }}（{{ s.person_in_charge }}）<br>
+                <p class="mb-1"><strong>🕒 {{ s.time_slot }}</strong>：{{ s.task_name }}</p>
+                <p class="mb-1">👤 {{ s.person_in_charge or '―' }}</p>
                 {% if s.comment %}
-                  <small class="text-muted">{{ s.comment }}</small>
+                  <p class="mb-1 text-muted">{{ s.comment }}</p>
                 {% endif %}
+                <p class="mb-0 text-end">
+                  登録者：<small>{{ s.creator.display_name }}</small>
+                </p>
               </div>
             </div>
           {% endfor %}
