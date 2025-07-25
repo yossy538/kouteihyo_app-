@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      FLASK_APP: kouteihyo_app.app
+      FLASK_ENV: development
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Stamp current DB
+        run: |
+          source .venv/bin/activate
+          flask db stamp head
+
+      - name: Run migrations
+        run: |
+          source .venv/bin/activate
+          flask db migrate -m "CI migration check"
+
+      - name: Apply migrations
+        run: |
+          source .venv/bin/activate
+          flask db upgrade
+
+      - name: Run tests
+        run: |
+          source .venv/bin/activate
+          pytest -q
+
