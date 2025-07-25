@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     locale: 'ja',
     initialView: 'dayGridMonth',
     headerToolbar: { left:'prev,next today', center:'title', right:'' },
-    buttonText: { today:'今日' },
+    buttonText: { today:'今日', prev: '<', next:'>' },
     firstDay: 0,
     events: '/api/schedules',
 

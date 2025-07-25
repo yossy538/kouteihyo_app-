@@ -205,21 +205,20 @@ def edit_client_comment(id):
 @bp.route('/schedules/client/comment/delete/<int:id>', methods=['POST'])
 @login_required
 def delete_client_comment(id):
-    note = DateNote.query.get_or_404(id)
-
+    schedule = Schedule.query.get_or_404(id)
     # 発注元のみ削除可
     if current_user.company.name != '菱輝金型工業':
         flash('権限がありません', 'danger')
     else:
-        db.session.delete(note)
+        schedule.client_comment = ''
+        schedule.client_person = ''
         db.session.commit()
-        flash('発注元コメントを削除しました', 'success')
-
-    # 詳細ページ（同じ日付）の一覧に戻す
+        flash('スケジュールメモを削除しました', 'success')
     return redirect(
         url_for('main.schedule_by_date',
-                date_str=note.date.strftime('%Y-%m-%d'))
+                date_str=schedule.date.strftime('%Y-%m-%d'))
     )
+
 
 
 @bp.route('/schedules/date/<date_str>', methods=['GET','POST'])
