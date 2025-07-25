@@ -21,6 +21,7 @@ class User(db.Model, UserMixin):
     company_id    = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=False)
     display_name  = db.Column(db.String(100), nullable=False)
     email         = db.Column(db.String(120), unique=True, nullable=False)
+    username      = db.Column(db.String(64), unique=True, nullable=False)   # ←追加済み！
     password_hash = db.Column(db.String(128), nullable=False)
     role          = db.Column(db.String(20), nullable=False)  # 'admin' or 'company'
 
@@ -32,6 +33,7 @@ class User(db.Model, UserMixin):
     )
     site_notes = db.relationship('SiteNote', backref='creator', lazy=True)
     date_notes = db.relationship('DateNote', backref='creator', lazy=True)
+
 
 class Schedule(db.Model):
     __tablename__ = 'schedules'
@@ -67,3 +69,4 @@ class DateNote(db.Model):
     client_person  = db.Column(db.String(255), nullable=True)
     client_comment = db.Column(db.Text, nullable=True)
     created_by     = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+

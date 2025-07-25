@@ -18,7 +18,7 @@
   </div>
 
   {# ─── 日付全体のメモフォーム／表示 ─── #}
-  {% if current_user.company_name == '菱輝金型工業' %}
+  {% if current_user.company.name == '菱輝金型工業' %}
   <div class="card mb-4">
     <div class="card-body">
       <h5>日付メモの編集</h5>
@@ -84,22 +84,38 @@
         <div class="card h-100">
           <div class="card-body">
             <h5>{{ s.task_name }}（{{ s.time_slot }}） @ {{ s.site_name }}</h5>
-            <p>🏢 会社：{{ s.company.company_name }}</p>
+            <p>🏢 会社：{{ s.company.name }}</p>
             <p>担当：{{ s.person_in_charge }}</p>
-            <p>🔧 作業詳細：{{ s.comment or '（なし）' }}</p>
+            <p>🔧 作業詳細：{{ s.comment or s.task_name or '（なし）' }}</p>
 
-            {% if current_user.id == s.company_id and current_user.company_name != '菱輝金型工業' %}
-              <form method="POST"
-                    action="{{ url_for('main.schedule_delete', id=s.id) }}"
-                    onsubmit="return confirm('本当に削除しますか？');"
-                    class="mt-2">
-                <button type="submit" class="btn btn-danger btn-sm w-100">
-                  🗑️ 削除
-                </button>
-              </form>
-            {% endif %}
+        <div class="{% if s.company_id == current_user.company_id %}bg-info{% endif %} p-2 rounded">
+            {% set weekdays = ['月', '火', '水', '木', '金', '土', '日'] %}
+            <p>
+              <span style="font-weight:bold; color:#007bff;">📅 工程期間：</span><br>
+              <span style="font-size:0.8em; background:#f6f6ff; border-radius:6px; padding:2px 8px;">
+                {{ s.date.month }}/{{ s.date.day }}（{{ weekdays[s.date.weekday()] }}）
+                {% if s.end_date and s.end_date != s.date %}
+                  〜{{ s.end_date.month }}/{{ s.end_date.day }}（{{ weekdays[s.end_date.weekday()] }}）
+                {% endif %}
+              </span>
+            </p>
 
-            {% if current_user.company_name == '菱輝金型工業' %}
+        </div>
+
+
+                {% if s.company_id == current_user.company_id and current_user.company.name != '菱輝金型工業' %}
+                  <form method="POST"
+                        action="{{ url_for('main.schedule_delete', id=s.id) }}"
+                        onsubmit="return confirm('本当に削除しますか？');"
+                        class="mt-2">
+                    <button type="submit" class="btn btn-danger btn-sm w-100">
+                      🗑️ 削除
+                    </button>
+                  </form>
+                {% endif %}
+
+
+            {% if current_user.company.name == '菱輝金型工業' %}
               <a href="{{ url_for('main.edit_client_comment', id=s.id) }}"
                  class="btn btn-sm btn-outline-primary mt-2 w-100">
                 スケジュールメモ編集
@@ -128,7 +144,7 @@
 
 
   {# ─── 作業会社向け：一括編集＆新規追加 ─── #}
-  {% if current_user.company_name != '菱輝金型工業' %}
+  {% if current_user.company.name != '菱輝金型工業' %}
     <h4 class="mt-5">🛠️ 予定の一括編集</h4>
     <form method="POST">
       {% for s in schedules if s.company_id == current_user.id %}

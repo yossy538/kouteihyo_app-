@@ -1,3 +1,5 @@
+# kouteihyo_app/__init__.py
+
 import os
 from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
@@ -6,31 +8,34 @@ from flask_talisman import Talisman
 from flask_migrate import Migrate
 from dotenv import load_dotenv
 
-# モデル・ルート・設定はパッケージ相対インポート
 from kouteihyo_app.models import db, User, SiteNote
 from kouteihyo_app.routes import bp
 from kouteihyo_app.config import DevelopmentConfig, ProductionConfig
 
-# 環境変数を読み込む（.env）
 load_dotenv()
 IS_PRODUCTION = os.getenv('IS_PRODUCTION', 'false').lower() == 'true'
 
-app = Flask(__name__)
-# 設定ファイル適用
-app.config.from_object(ProductionConfig if IS_PRODUCTION else DevelopmentConfig)
+print("TEMPLATE FOLDER PATH:", os.path.join(os.path.dirname(__file__), '..', 'templates'))
+print("STATIC FOLDER PATH:", os.path.join(os.path.dirname(__file__), '..', 'static'))
 
-# ── SQLite の DB ファイルを絶対パス指定 ──
+
+app = Flask(
+    __name__,
+    template_folder=os.path.join(os.path.dirname(__file__), '..', 'templates'),
+    static_folder=os.path.join(os.path.dirname(__file__), '..', 'static')
+)
+
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "hogehoge_dev_key")
+
+
 basedir = os.path.abspath(os.path.dirname(__file__))
-instance_dir = os.path.join(basedir, 'instance')
-# instance フォルダがなければ作成
+instance_dir = os.path.join(basedir, '..', 'instance')
 os.makedirs(instance_dir, exist_ok=True)
 db_file = os.path.join(instance_dir, 'kouteihyo.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_file}"
 
-# セキュリティ設定（Talisman）
 SELF = "'self'"
 CDN = "https://cdn.jsdelivr.net"
-
 if IS_PRODUCTION:
     Talisman(
         app,
@@ -63,11 +68,11 @@ else:
         strict_transport_security=False
     )
 
-# DB 初期化 & マイグレーション
+# DB, Migrate
 db.init_app(app)
 migrate = Migrate(app, db)
 
-# ログイン管理
+# Login
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'main.login'
@@ -76,10 +81,10 @@ login_manager.login_view = 'main.login'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# Blueprint 登録
+# Blueprint
 app.register_blueprint(bp)
 
-# エラーハンドラー
+# Error Handlers
 def register_error_handlers(app):
     @app.errorhandler(403)
     def forbidden(e):
@@ -94,7 +99,3 @@ def register_error_handlers(app):
         return render_template('errors/500.html'), 500
 
 register_error_handlers(app)
-
-# 実行
-if __name__ == '__main__':
-    app.run(debug=not IS_PRODUCTION, host='127.0.0.1', port=5010)
