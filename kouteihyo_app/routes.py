@@ -15,22 +15,42 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from .models import db, User, Schedule, DateNote, Company
 from .forms import LoginForm, AdminUserCreateForm, DeleteNoteForm
 from dateutil.parser import parse as parse_date  # ファイル冒頭に追記
-
+from flask import abort
 
 bp = Blueprint('main', __name__)
 
 # ログイン
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
+    from flask_login import current_user  # 必ずここでimport
+    print("【login関数】METHOD:", request.method)
+    print("【login関数】POST DATA:", request.form)
     form = LoginForm()
+    print("【login関数】form.errors(before validate):", form.errors)
+    print("【login関数】form.validate_on_submit():", form.validate_on_submit())
+
+    user = None  # これ重要！
+
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user and check_password_hash(user.password_hash, form.password.data):
             login_user(user)
+            print("【login_user called】user.id =", user.id)
+            print("【is_authenticated after login_user】", current_user.is_authenticated)
+            from flask import session
+            print("【session after login_user】", dict(session))
             session.permanent = True
             return redirect(url_for('main.schedule_calendar'))
-        flash('ユーザー名またはパスワードが違います', 'danger')
+        else:
+            flash('ユーザー名またはパスワードが違います', 'danger')
+            print("【login関数】ログイン失敗: user=", user)
+
+    print("【login関数】LOGIN ERRORS:", form.errors)
     return render_template('login.html', form=form)
+
+
+
+
 
 # ログアウト
 @bp.route('/logout')
@@ -205,19 +225,16 @@ def edit_client_comment(id):
 @bp.route('/schedules/client/comment/delete/<int:id>', methods=['POST'])
 @login_required
 def delete_client_comment(id):
-    schedule = Schedule.query.get_or_404(id)
-    # 発注元のみ削除可
+    note = DateNote.query.get_or_404(id)
     if current_user.company.name != '菱輝金型工業':
         flash('権限がありません', 'danger')
     else:
-        schedule.client_comment = ''
-        schedule.client_person = ''
+        db.session.delete(note)
         db.session.commit()
         flash('スケジュールメモを削除しました', 'success')
-    return redirect(
-        url_for('main.schedule_by_date',
-                date_str=schedule.date.strftime('%Y-%m-%d'))
-    )
+    return redirect(url_for('main.schedule_by_date', date_str=note.date.strftime('%Y-%m-%d')))
+
+
 
 
 
@@ -333,3 +350,44 @@ def password_change():
             flash('パスワードを変更しました', 'success')
             return redirect(url_for('main.schedule_calendar'))
     return render_template('auth/password_change.html')
+
+
+@bp.route("/admin/list_users")
+@login_required
+def admin_list_users():
+    if current_user.role != 'admin':
+        abort(403)
+    users = User.query.all()  # ← 必ずリストを作る！
+    return render_template("admin/user_list.html", users=users)
+
+
+@bp.route("/admin/create_user", methods=["GET", "POST"])
+@login_required
+def admin_create_user():
+    if current_user.role != 'admin':
+        abort(403)
+    form = AdminUserCreateForm()
+    # 会社の選択肢を動的にセット（IDと会社名のタプル）
+    form.company_id.choices = [(c.id, c.name) for c in Company.query.order_by(Company.name).all()]
+
+    if form.validate_on_submit():
+        # 既に同じusernameやemailがあるかチェックするのがおすすめ
+        if User.query.filter_by(username=form.username.data).first():
+            flash('このユーザー名は既に使われています', 'danger')
+        elif User.query.filter_by(email=form.email.data).first():
+            flash('このメールアドレスは既に使われています', 'danger')
+        else:
+            user = User(
+                company_id=form.company_id.data,
+                display_name=form.display_name.data,
+                username=form.username.data,
+                email=form.email.data,
+                password_hash=generate_password_hash(form.password.data),
+                role=form.role.data
+            )
+            db.session.add(user)
+            db.session.commit()
+            flash('ユーザーを作成しました', 'success')
+            return redirect(url_for('main.admin_list_users'))
+
+    return render_template("admin/user_new.html", form=form)

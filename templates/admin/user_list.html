@@ -15,8 +15,8 @@
       {% for u in users %}
       <tr>
         <td>{{ u.id }}</td>
-        <td>{{ u.company_name }}</td>
-        <td>{{ u.email }}</td>
+        <td>{{ u.company.name }}</td>
+        <td>{{ u.username }}</td>
         <td>{{ u.role }}</td>
       </tr>
       {% endfor %}

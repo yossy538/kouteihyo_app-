@@ -30,3 +30,15 @@ class ProductionConfig(Config):
     DEBUG = False
     WTF_CSRF_ENABLED = True
     # 本番では全てTrue（Configから継承済み）
+
+# config.py
+class TestingConfig(Config):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    WTF_CSRF_ENABLED = False
+    SESSION_COOKIE_SECURE = False
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'   # ← 'None' や False ではなく 'Lax' で固定推奨
+    REMEMBER_COOKIE_SECURE = False
+    SECRET_KEY = "test-key"
+    SERVER_NAME = "localhost.localdomain"  # ←これも追加

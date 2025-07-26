@@ -30,7 +30,7 @@
           <a href="{{ url_for('main.schedule_calendar') }}" class="btn btn-outline-primary btn-sm mx-2">カレンダー</a>
           <a href="{{ url_for('main.schedule_list') }}"     class="btn btn-outline-primary btn-sm mx-2">一覧</a>
           {% if current_user.role == 'admin' %}
-            <a href="{{ url_for('main.admin_list_users') }}" class="btn btn-outline-secondary btn-sm mx-2">管理者メニュー</a>
+          <a href="{{ url_for('main.admin_list_users') }}" class="btn btn-outline-secondary btn-sm mx-2">管理者メニュー</a> 
           {% endif %}
         </div>
         <div>

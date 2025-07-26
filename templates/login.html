@@ -5,15 +5,17 @@
 {% block content %}
 
   {# フラッシュメッセージ #}
-  {% with messages = get_flashed_messages() %}
-    {% if messages %}
-      <div class="alert alert-danger">
-        {% for msg in messages %}
-          <p>{{ msg }}</p>
-        {% endfor %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, msg in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ msg }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
-    {% endif %}
-  {% endwith %}
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
 
   <div class="container mt-5" style="max-width: 400px;">
     <h2>ログイン</h2>
