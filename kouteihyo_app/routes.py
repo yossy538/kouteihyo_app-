@@ -310,3 +310,26 @@ def api_note_list():
         } for n in notes
     ]
     return jsonify(note_list=note_list)
+
+from werkzeug.security import check_password_hash, generate_password_hash
+from flask_login import current_user, login_required
+
+@bp.route('/password_change', methods=['GET', 'POST'])
+@login_required
+def password_change():
+    if request.method == 'POST':
+        old = request.form.get('old_password')
+        new = request.form.get('new_password')
+        new2 = request.form.get('new_password2')
+        if not check_password_hash(current_user.password_hash, old):
+            flash('現在のパスワードが違います', 'danger')
+        elif new != new2:
+            flash('新しいパスワードが一致しません', 'danger')
+        elif len(new) < 8:
+            flash('パスワードは8文字以上にしてください', 'danger')
+        else:
+            current_user.password_hash = generate_password_hash(new)
+            db.session.commit()
+            flash('パスワードを変更しました', 'success')
+            return redirect(url_for('main.schedule_calendar'))
+    return render_template('auth/password_change.html')
