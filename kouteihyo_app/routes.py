@@ -17,15 +17,17 @@ from .forms import LoginForm, AdminUserCreateForm, DeleteNoteForm
 from dateutil.parser import parse as parse_date  # ファイル冒頭に追記
 from flask import abort
 
+
 bp = Blueprint('main', __name__)
 
 # ログイン
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
+    form = LoginForm()
+
     from flask_login import current_user  # 必ずここでimport
     print("【login関数】METHOD:", request.method)
     print("【login関数】POST DATA:", request.form)
-    form = LoginForm()
     print("【login関数】form.errors(before validate):", form.errors)
     print("【login関数】form.validate_on_submit():", form.validate_on_submit())
 
@@ -40,6 +42,9 @@ def login():
             from flask import session
             print("【session after login_user】", dict(session))
             session.permanent = True
+            # 🔽 ここを追加
+            if user.must_change_password:
+                return redirect(url_for('main.force_password_change'))
             return redirect(url_for('main.schedule_calendar'))
         else:
             flash('ユーザー名またはパスワードが違います', 'danger')
@@ -368,11 +373,10 @@ def admin_create_user():
     if current_user.role != 'admin':
         abort(403)
     form = AdminUserCreateForm()
-    # 会社の選択肢を動的にセット（IDと会社名のタプル）
     form.company_id.choices = [(c.id, c.name) for c in Company.query.order_by(Company.name).all()]
 
     if form.validate_on_submit():
-        # 既に同じusernameやemailがあるかチェックするのがおすすめ
+        # 既に同じusernameやemailがあるかチェック
         if User.query.filter_by(username=form.username.data).first():
             flash('このユーザー名は既に使われています', 'danger')
         elif User.query.filter_by(email=form.email.data).first():
@@ -384,7 +388,8 @@ def admin_create_user():
                 username=form.username.data,
                 email=form.email.data,
                 password_hash=generate_password_hash(form.password.data),
-                role=form.role.data
+                role=form.role.data,
+                must_change_password=True   # ←★これを**必ず追加**！
             )
             db.session.add(user)
             db.session.commit()
@@ -392,3 +397,27 @@ def admin_create_user():
             return redirect(url_for('main.admin_list_users'))
 
     return render_template("admin/user_new.html", form=form)
+
+
+@bp.route('/force_password_change', methods=['GET', 'POST'])
+@login_required
+def force_password_change():
+    if not current_user.must_change_password:
+        return redirect(url_for('main.schedule_calendar'))
+    if request.method == 'POST':
+        old_pw = request.form['old_password']
+        new_pw = request.form['new_password']
+        new_pw2 = request.form['new_password2']
+        if not check_password_hash(current_user.password_hash, old_pw):
+            flash('現在のパスワードが違います', 'danger')
+        elif new_pw != new_pw2:
+            flash('新しいパスワードが一致しません', 'danger')
+        elif len(new_pw) < 8:
+            flash('パスワードは8文字以上で設定してください', 'danger')
+        else:
+            current_user.password_hash = generate_password_hash(new_pw)
+            current_user.must_change_password = False
+            db.session.commit()
+            flash('パスワードが変更されました', 'success')
+            return redirect(url_for('main.schedule_calendar'))
+    return render_template('auth/password_change.html')

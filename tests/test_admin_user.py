@@ -36,11 +36,16 @@ def admin_user(client, app):
     yield user
 
 
+# tests/test_admin_user.py
+
 def test_admin_create_user_page_access(client, admin_user):
     """管理者が新規ユーザー作成ページにアクセスできること"""
     response = client.get(url_for('main.admin_create_user'))
     assert response.status_code == 200
-    assert 'ユーザーを作成しました' in response.data.decode('utf-8')
+    print(response.data.decode("utf-8"))
+
+    assert "ユーザー作成" in response.data.decode("utf-8") # 画面タイトルで十分！
+
 
 
 def test_admin_create_user_success(client, admin_user, app):

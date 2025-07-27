@@ -24,6 +24,8 @@ class User(db.Model, UserMixin):
     username      = db.Column(db.String(64), unique=True, nullable=False)   # ←追加済み！
     password_hash = db.Column(db.String(128), nullable=False)
     role          = db.Column(db.String(20), nullable=False)  # 'admin' or 'company'
+    must_change_password = db.Column(db.Boolean, nullable=False, default=True)  # ←これを追加！！
+
 
     created_schedules = db.relationship(
         'Schedule',
