@@ -147,7 +147,7 @@
   {% if current_user.company.name != '菱輝金型工業' %}
     <h4 class="mt-5">🛠️ 予定の一括編集</h4>
     <form method="POST">
-      {% for s in schedules if s.company_id == current_user.id %}
+{% for s in schedules if s.company_id == current_user.company_id %}
         <div class="card mb-3">
           <div class="card-body">
             <input type="hidden" name="schedule_id_{{ s.id }}" value="{{ s.id }}">

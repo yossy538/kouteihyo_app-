@@ -108,7 +108,7 @@ def schedule_calendar():
 def api_schedules():
     schedules = Schedule.query.all()
     notes = DateNote.query.all()
-    colors = {1:'#ff9999',2:'#99ccff',3:'#99ff99',4:'#ffff99',5:'#cc99ff'}
+    colors = {1:'#99ccff',2:'#99ff99',3:'#ff9999',4:'#cc99ff',5:'#ffff99'}
     events = []
     for s in schedules:
         start = s.date
@@ -120,6 +120,7 @@ def api_schedules():
             'start': start.isoformat(),
             'end': (end + timedelta(days=1)).isoformat(),
             'color': colors.get(s.company_id, '#cccccc'),
+            'textColor': 'black',
             'allDay': True,
             'extendedProps': {
                 'fullTitle': f"{s.time_slot} {s.task_name}",
