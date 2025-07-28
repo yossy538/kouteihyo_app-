@@ -17,9 +17,7 @@
 {% endwith %}
 
 
-  <div class="container mt-5" style="max-width: 400px;">
-    <h2>ログイン</h2>
-    <form method="POST">
+    <form id="login-form" method="POST">
       {{ form.hidden_tag() }}
       <div class="mb-3">
         {{ form.username.label }} {{ form.username(class="form-control") }}

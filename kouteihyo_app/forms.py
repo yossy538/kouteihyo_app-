@@ -3,8 +3,36 @@
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SelectField, SubmitField, TextAreaField
-from wtforms.validators import DataRequired, Length, Email, Regexp
+from wtforms.validators import DataRequired, Length, Email, Regexp, EqualTo, ValidationError
+from werkzeug.security import check_password_hash
+import re
 
+
+class ChangePasswordForm(FlaskForm):
+    old_password = PasswordField('現在のパスワード', validators=[DataRequired()])
+    new_password = PasswordField('新しいパスワード', validators=[DataRequired()])
+    confirm_password = PasswordField('確認用パスワード', validators=[DataRequired(), EqualTo('new_password')])
+
+    def __init__(self, current_user_password_hash, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.current_user_password_hash = current_user_password_hash
+
+    def validate_new_password(self, field):
+        password = field.data
+
+        if check_password_hash(self.current_user_password_hash, password):
+            raise ValidationError("新しいパスワードは現在のパスワードと異なる必要があります。")
+
+        if len(password) < 8:
+            raise ValidationError("パスワードは8文字以上にしてください。")
+        if not re.search(r'[A-Z]', password):
+            raise ValidationError("大文字を1文字以上含めてください。")
+        if not re.search(r'[a-z]', password):
+            raise ValidationError("小文字を1文字以上含めてください。")
+        if not re.search(r'[0-9]', password):
+            raise ValidationError("数字を1文字以上含めてください。")
+        if not re.search(r'[!@#$%^&*(),.?\":{}|<>]', password):
+            raise ValidationError("記号（!@#$%^&*()など）を含めてください。")
 # ログインフォーム（ユーザー名ログイン方式）
 class LoginForm(FlaskForm):
     username = StringField('ユーザー名', validators=[DataRequired(), Length(max=64)])

@@ -25,12 +25,15 @@
 {% endblock %}
 
 {% block content %}
-  <h2>カレンダー（稲沢工場D棟 の工程表）</h2>
-  <!-- ここで holiday_list を data-holidays に JSON として渡す -->
-  <div
-    id="calendar"
-    data-holidays='{{ holiday_list|tojson }}'
-  ></div>
+  <!-- 👇 ここから全体を囲む！ -->
+  <div id="calendar-page">
+    <h2>カレンダー（稲沢工場D棟 の工程表）</h2>
+    <!-- ここで holiday_list を data-holidays に JSON として渡す -->
+    <div
+      id="calendar"
+      data-holidays='{{ holiday_list|tojson }}'
+    ></div>
+  </div>
 {% endblock %}
 
 {% block scripts %}
@@ -39,4 +42,3 @@
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
   <script src="{{ url_for('static', filename='js/calendar.js') }}"></script>
 {% endblock %}
-

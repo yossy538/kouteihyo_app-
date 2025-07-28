@@ -2,7 +2,7 @@
 
 {% extends 'base.html' %}
 {% block content %}
-<div class="container-fluid mt-4">
+<div id="by-date-page" class="container-fluid mt-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
     {% if max_end_date and max_end_date != selected_date %}
       <h3>
@@ -22,9 +22,8 @@
   <div class="card mb-4">
     <div class="card-body">
       <h5>日付メモの編集</h5>
-
-      {# ■ 保存用フォーム #}
-      <form method="POST">
+      <!-- ★ 日付メモ保存フォームにID追加 -->
+      <form id="date-note-form" method="POST">
         {{ delete_form.csrf_token }}
         <div class="mb-3">
           <label for="date_client_person">依頼元担当者</label>
@@ -52,8 +51,9 @@
 
       {% if date_note %}
         <hr class="my-3">
-        {# ■ 削除用フォーム #}
+        <!-- ★ 削除用フォームにもID付与（任意。複数フォームある場合区別したい時に） -->
         <form
+          id="delete-date-note-form"
           method="POST"
           action="{{ url_for('main.delete_client_comment', id=date_note.id) }}"
           onsubmit="return confirm('本当にこのメモを削除しますか？');"
@@ -76,9 +76,8 @@
   {% endif %}
 {% endif %}
 
-
   {# ─── スケジュール一覧 ─── #}
-  <div class="row">
+  <div class="row" id="schedule-list">
     {% for s in schedules %}
       <div class="col-12 col-sm-6 col-md-4 mb-3">
         <div class="card h-100">
@@ -99,21 +98,18 @@
                 {% endif %}
               </span>
             </p>
-
         </div>
 
-
-                {% if s.company_id == current_user.company_id and current_user.company.name != '菱輝金型工業' %}
-                  <form method="POST"
-                        action="{{ url_for('main.schedule_delete', id=s.id) }}"
-                        onsubmit="return confirm('本当に削除しますか？');"
-                        class="mt-2">
-                    <button type="submit" class="btn btn-danger btn-sm w-100">
-                      🗑️ 削除
-                    </button>
-                  </form>
-                {% endif %}
-
+            {% if s.company_id == current_user.company_id and current_user.company.name != '菱輝金型工業' %}
+              <form method="POST"
+                    action="{{ url_for('main.schedule_delete', id=s.id) }}"
+                    onsubmit="return confirm('本当に削除しますか？');"
+                    class="mt-2 schedule-delete-form">
+                <button type="submit" class="btn btn-danger btn-sm w-100">
+                  🗑️ 削除
+                </button>
+              </form>
+            {% endif %}
 
             {% if current_user.company.name == '菱輝金型工業' %}
               <a href="{{ url_for('main.edit_client_comment', id=s.id) }}"
@@ -123,7 +119,7 @@
               <form method="POST"
                     action="{{ url_for('main.delete_client_comment', id=s.id) }}"
                     onsubmit="return confirm('本当に削除しますか？');"
-                    class="mt-2">
+                    class="mt-2 schedule-comment-delete-form">
                 <button class="btn btn-sm btn-outline-danger w-100">
                   スケジュールメモ削除
                 </button>
@@ -142,12 +138,11 @@
     {% endfor %}
   </div>
 
-
   {# ─── 作業会社向け：一括編集＆新規追加 ─── #}
   {% if current_user.company.name != '菱輝金型工業' %}
     <h4 class="mt-5">🛠️ 予定の一括編集</h4>
-    <form method="POST">
-{% for s in schedules if s.company_id == current_user.company_id %}
+    <form id="bulk-edit-form" method="POST">
+      {% for s in schedules if s.company_id == current_user.company_id %}
         <div class="card mb-3">
           <div class="card-body">
             <input type="hidden" name="schedule_id_{{ s.id }}" value="{{ s.id }}">
@@ -198,7 +193,7 @@
     </form>
 
     <h4 class="mt-5">🔰 新しい工程予定を追加</h4>
-    <form method="POST" action="{{ url_for('main.schedule_add') }}">
+    <form id="add-schedule-form" method="POST" action="{{ url_for('main.schedule_add') }}">
       <div class="mb-3">
         <label>時間帯</label>
         <select name="time_slot" class="form-control form-control-lg" required>
@@ -235,6 +230,5 @@
       </div>
     </form>
   {% endif %}
-
 </div>
 {% endblock %}

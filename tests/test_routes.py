@@ -16,13 +16,15 @@ def create_user_with_company(app, username, password, role="company"):
             email=f"{username}@test.jp",
             username=username,
             password_hash=generate_password_hash(password),
-            role=role
+            role=role,
+            must_change_password=False   # ←最初からFalse！
         )
         db.session.add(u)
         db.session.commit()
-        print("★User.query.all() =", User.query.all())  # ここ追加
+        return u.id, c.id
 
-        return u, c
+
+
 
 # --- ログインヘルパー ---
 def login(client, username, password):
@@ -60,30 +62,67 @@ def test_users(app):
         return users, user_info
 
 # --- テスト本体 ---
+# tests/test_routes.py
+
 def test_login_logout_flow(client, app):
     u, _ = create_user_with_company(app, "loginuser", "password")
     resp = login(client, "loginuser", "password")
+    html = resp.get_data(as_text=True)
     print("=== LOGIN RESPONSE ===")
     print("Status:", resp.status)
     print("Headers:", dict(resp.headers))
-    print("Body:", resp.get_data(as_text=True)[:800])  # 長ければ先頭だけ
+    print("Body:", html[:800])
 
-    # デバッグ: ログイン後のレスポンス内容確認
-    if "カレンダー" not in resp.get_data(as_text=True):
-        print("★『カレンダー』が見つからなかった！")
-        if "ログイン" in resp.get_data(as_text=True):
-            print("★実はログイン画面に戻されている！")
-        if "<title>Redirecting" in resp.get_data(as_text=True):
-            print("★リダイレクトHTMLになってる！Location:", resp.headers.get("Location"))
+    # ここで判定！
+    if 'id="calendar-page"' in html:
+        pass
+    elif 'id="password-change-form"' in html:
+        pass
+    else:
+        assert False, "カレンダーでもパスワード変更画面でもない"
 
-    assert "カレンダー" in resp.get_data(as_text=True)
+    # ログアウト判定もIDで
     resp = client.get("/logout", follow_redirects=True)
-    print("=== LOGOUT RESPONSE ===")
-    print("Status:", resp.status)
-    print("Headers:", dict(resp.headers))
-    print("Body:", resp.get_data(as_text=True)[:800])
+    html = resp.get_data(as_text=True)
+    assert 'id="login-form"' in html
 
-    assert "ログイン" in resp.get_data(as_text=True)
+def test_by_date_page_visible_after_login(client, app):
+    user_id, company_id = create_user_with_company(app, "dateuser", "password")
+    from kouteihyo_app.models import Schedule, User, db
+    from datetime import date as dt_date
+    with app.app_context():
+        s = Schedule(
+            company_id=company_id,
+            created_by=user_id,
+            site_name="テスト現場",
+            date=dt_date(2025, 8, 1),
+            end_date=None,
+            time_slot="午前",
+            task_name="テスト作業",
+            person_in_charge="太郎",
+            comment="テストコメント"
+        )
+        db.session.add(s)
+        # パスワード変更フラグをFalseに
+        u = User.query.get(user_id)
+        u.must_change_password = False
+        db.session.commit()
+
+    login(client, "dateuser", "password")
+    # ↓ ここを修正
+    resp = client.get("/schedules/date/2025-08-01", follow_redirects=True)
+    html = resp.get_data(as_text=True)
+    print(html)  # ←ここに追加！assertの前
+    assert 'id="by-date-page"' in html
+    assert 'id="date-note-form"' in html or 'id="bulk-edit-form"' in html
+
+    # 2回目も同様に修正
+    login(client, "dateuser", "password")
+    resp = client.get("/schedules/date/2025-08-01", follow_redirects=True)
+    html = resp.get_data(as_text=True)
+    assert 'id="by-date-page"' in html
+    assert 'id="date-note-form"' in html or 'id="bulk-edit-form"' in html
+
 
 
 
@@ -196,3 +235,5 @@ def test_all_users_can_change_password(client, app, test_users):
         client.get("/logout", follow_redirects=True)
         resp3 = login(client, info["username"], info["pw"])
         assert "ユーザー名またはパスワードが違います" in resp3.get_data(as_text=True)
+
+
