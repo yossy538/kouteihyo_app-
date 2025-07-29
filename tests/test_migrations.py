@@ -22,7 +22,7 @@ def alembic_cfg(tmp_path):
     return cfg
 
 def test_migrations_apply(alembic_cfg):
-    app = create_app(TestingConfig)  # ★ここでappを生成
+    app = create_app(config_class=TestingConfig) 
     with app.app_context():
         command.upgrade(alembic_cfg, 'head')
         # 必要ならテーブル存在チェックなども追加できる

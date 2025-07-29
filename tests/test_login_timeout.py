@@ -6,10 +6,12 @@ from kouteihyo_app import create_app, db
 from kouteihyo_app.models import User
 from werkzeug.security import generate_password_hash
 from datetime import timedelta
+from kouteihyo_app.config import TestingConfig
 
 @pytest.fixture
 def app():
-    app = create_app()
+    app = create_app(config_class=TestingConfig)
+
     app.config['TESTING'] = True
     app.config['WTF_CSRF_ENABLED'] = False
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=2)  # テスト時は超短縮

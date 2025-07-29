@@ -16,6 +16,18 @@ from .models import db, User, Schedule, DateNote, Company
 from .forms import LoginForm, AdminUserCreateForm, DeleteNoteForm
 from dateutil.parser import parse as parse_date  # ファイル冒頭に追記
 from flask import abort
+import re
+
+
+def is_strong_password(pw):
+    return (
+        len(pw) >= 8 and
+        bool(re.search(r'[A-Z]', pw)) and
+        bool(re.search(r'[a-z]', pw)) and
+        bool(re.search(r'[0-9]', pw)) and
+        bool(re.search(r'[^A-Za-z0-9]', pw))
+    )
+
 
 
 bp = Blueprint('main', __name__)
@@ -414,6 +426,8 @@ def force_password_change():
             flash('新しいパスワードが一致しません', 'danger')
         elif len(new_pw) < 8:
             flash('パスワードは8文字以上で設定してください', 'danger')
+        elif not is_strong_password(new_pw):
+            flash('パスワードは英大文字・小文字・数字・記号を全て含めてください', 'danger')
         else:
             current_user.password_hash = generate_password_hash(new_pw)
             current_user.must_change_password = False
@@ -421,3 +435,15 @@ def force_password_change():
             flash('パスワードが変更されました', 'success')
             return redirect(url_for('main.schedule_calendar'))
     return render_template('auth/password_change.html')
+
+
+@bp.route('/')
+def index():
+    # ログイン済みならカレンダーへ
+    if current_user.is_authenticated:
+        return redirect(url_for('main.schedule_calendar'))
+    # 未ログインならログイン画面へ
+    return redirect(url_for('main.login'))
+
+# kouteihyo_app/routes.py の一番下
+__all__ = ["is_strong_password"]

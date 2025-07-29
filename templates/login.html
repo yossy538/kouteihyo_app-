@@ -1,23 +1,21 @@
-<!-- login.html -->
-
 {% extends 'base.html' %}
 
 {% block content %}
+<div class="container vh-100 d-flex flex-column justify-content-center align-items-center">
+  <div class="w-100" style="max-width: 420px;">
+    {# フラッシュメッセージ #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
-  {# フラッシュメッセージ #}
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, msg in messages %}
-      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-        {{ msg }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-      </div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-
-
-    <form id="login-form" method="POST">
+    <form id="login-form" method="POST" class="bg-white rounded shadow-sm p-4">
       {{ form.hidden_tag() }}
       <div class="mb-3">
         {{ form.username.label }} {{ form.username(class="form-control") }}
@@ -29,12 +27,14 @@
         {{ form.submit(class="btn btn-primary w-100") }}
       </div>
     </form>
-<div class="text-center mt-3">
-  <div class="alert alert-info small">
-    ※本システムは関係会社向けの工程表アプリです※<br>
-    ログイン情報は管理者より配布しております。<br>
-    アカウントが未発行の方は<br>三空工業までご連絡ください。
+
+    <div class="text-center mt-3">
+      <div class="alert alert-info small mb-0">
+        ※本システムは関係会社向けの工程表アプリです※<br>
+        ログイン情報は管理者より配布しております。<br>
+        アカウントが未発行の方は<br>三空工業までご連絡ください。
+      </div>
+    </div>
   </div>
 </div>
-
 {% endblock %}

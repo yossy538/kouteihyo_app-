@@ -236,4 +236,47 @@ def test_all_users_can_change_password(client, app, test_users):
         resp3 = login(client, info["username"], info["pw"])
         assert "ユーザー名またはパスワードが違います" in resp3.get_data(as_text=True)
 
+def test_force_password_change_redirect(client, app):
+    # must_change_password=True なユーザーを追加
+    with app.app_context():
+        c = Company(name="強制変更社")
+        db.session.add(c)
+        db.session.commit()
+        u = User(
+            company_id=c.id,
+            display_name="ForceUser",
+            email="forceuser@test.jp",
+            username="forceuser",
+            password_hash=generate_password_hash("pass1234"),
+            role="company",
+            must_change_password=True  # 🔥 ここが重要
+        )
+        db.session.add(u)
+        db.session.commit()
+
+    resp = client.post("/login", data={
+        "username": "forceuser",
+        "password": "pass1234"
+    }, follow_redirects=True)
+
+    html = resp.get_data(as_text=True)
+    assert 'id="password-change-form"' in html or "パスワード変更" in html
+
+import pytest
+from kouteihyo_app.routes import is_strong_password
+
+@pytest.mark.parametrize("pw, expected", [
+    ("Abcd1234!", True),    # 全部含む
+    ("abcd1234!", False),   # 大文字なし
+    ("ABCD1234!", False),   # 小文字なし
+    ("Abcdabcd!", False),   # 数字なし
+    ("Abcd12345", False),   # 記号なし
+    ("Abc!1", False),       # 8文字未満
+    ("12345678!", False),   # 英字なし
+    ("AbcdEFGH!", False),   # 数字なし
+    ("Abcd1234!", True),    # ふたたび正常
+])
+def test_is_strong_password(pw, expected):
+    """パスワードが強固かどうか判定関数のテスト"""
+    assert is_strong_password(pw) == expected
 

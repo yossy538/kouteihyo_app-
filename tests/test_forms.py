@@ -2,10 +2,13 @@ import pytest
 from kouteihyo_app import create_app
 from kouteihyo_app.forms import ChangePasswordForm
 from werkzeug.security import generate_password_hash
+from kouteihyo_app.config import TestingConfig
+
 
 @pytest.fixture
 def app():
-    app = create_app()
+    app = create_app(config_class=TestingConfig)
+
     app.config['WTF_CSRF_ENABLED'] = False  # CSRFを無効化（フォームのテスト用）
     return app
 

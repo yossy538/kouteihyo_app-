@@ -4,7 +4,7 @@ import secrets
 from datetime import timedelta 
 
 class Config:
-    # SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_hex(32) 本番はこっち
+    # SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_hex(32)  本番はこっち
     SECRET_KEY = os.environ.get("SECRET_KEY") or "dev-secret-key"  # ← 開発中はこれでもOK
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False

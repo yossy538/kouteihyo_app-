@@ -23,7 +23,6 @@ def user_with_force_change(app):
     return user
 
 def test_force_password_change_redirect(client, user_with_force_change):
-    # ログインPOST
     response = client.post(
         url_for('main.login'),
         data={
@@ -32,7 +31,6 @@ def test_force_password_change_redirect(client, user_with_force_change):
         },
         follow_redirects=False
     )
-    # 強制パスワード変更画面にリダイレクトされるか
     assert response.status_code == 302
     assert "/force_password_change" in response.headers["Location"]
 
@@ -43,19 +41,23 @@ def test_password_change_turns_off_flag(client, app, user_with_force_change):
         data={"username": "testuser", "password": "initpass123"},
         follow_redirects=True
     )
-    # 強制パスワード変更
+    # 強制パスワード変更POST（リダイレクトは追わない）
     response = client.post(
         url_for('main.force_password_change'),
         data={
             "old_password": "initpass123",
-            "new_password": "newpass456",
-            "new_password2": "newpass456"
+            "new_password": "Abcd1234!",
+            "new_password2": "Abcd1234!"
         },
-        follow_redirects=True
+        follow_redirects=False
     )
-    # 成功メッセージが表示されているか
-    assert "パスワードが変更されました" in response.data.decode("utf-8")
+    # 実際どこにリダイレクトされるか確認
+    assert response.status_code == 302
+    assert "/schedules/calendar" in response.headers["Location"] or "/schedule_calendar" in response.headers["Location"]
 
+    # そのリダイレクト先でflashを拾う
+    response2 = client.get(response.headers["Location"], follow_redirects=True)
+    assert "パスワードが変更されました" in response2.data.decode("utf-8")
 
     # DB側のフラグもFalseになっているか
     user = User.query.filter_by(username="testuser").first()
@@ -65,7 +67,7 @@ def test_password_change_turns_off_flag(client, app, user_with_force_change):
     client.get(url_for('main.logout'))
     response2 = client.post(
         url_for('main.login'),
-        data={"username": "testuser", "password": "newpass456"},
+        data={"username": "testuser", "password": "Abcd1234!"},
         follow_redirects=False
     )
     assert response2.status_code == 302
