@@ -1,44 +1,42 @@
-# config.py
 import os
 import secrets
 from datetime import timedelta 
 
 class Config:
-    # SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_hex(32)  本番はこっち
-    SECRET_KEY = os.environ.get("SECRET_KEY") or "dev-secret-key"  # ← 開発中はこれでもOK
-
+    # ← ここにデフォルト値（"dev-secret-key"）は絶対入れない！
+    SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "sqlite:///local.db")  # 本番は環境変数必須
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     WTF_CSRF_ENABLED = True
 
-    # 🔐 セッションとCookie保護設定（本番想定）
-    SESSION_COOKIE_SECURE = True            # HTTPSのみ送信（本番はTrue）
-    SESSION_COOKIE_HTTPONLY = True          # JSからアクセス不可
-    SESSION_COOKIE_SAMESITE = 'Lax'         # クロスサイト制限
-    REMEMBER_COOKIE_SECURE = True           # remember meもHTTPSのみ
-    REMEMBER_COOKIE_HTTPONLY = True         # remember meもJSから見えない
+    # Cookie/セッションの本番推奨設定
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    REMEMBER_COOKIE_SECURE = True
+    REMEMBER_COOKIE_HTTPONLY = True
 
-  # ✅ セッション有効期限の設定（ステップ10）
-    PERMANENT_SESSION_LIFETIME = timedelta(minutes=120)  # 120分で自動ログアウト
+    # セッション有効期限
+    PERMANENT_SESSION_LIFETIME = timedelta(minutes=120)
+
 class DevelopmentConfig(Config):
     DEBUG = True
     WTF_CSRF_ENABLED = False
-    SESSION_COOKIE_SECURE = False           # ローカルではFalseでOK
-    REMEMBER_COOKIE_SECURE = False          # 同上
-
+    SESSION_COOKIE_SECURE = False
+    REMEMBER_COOKIE_SECURE = False
+    SQLALCHEMY_DATABASE_URI = "sqlite:///dev.db"  # ローカル用
 
 class ProductionConfig(Config):
     DEBUG = False
     WTF_CSRF_ENABLED = True
-    # 本番では全てTrue（Configから継承済み）
+    # SESSION_COOKIE_SECURE/REMEMBER_COOKIE_SECUREなどはConfigの値を継承
+    # 必ず環境変数で上書きする前提
 
-# config.py
 class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     WTF_CSRF_ENABLED = False
     SESSION_COOKIE_SECURE = False
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Lax'   # ← 'None' や False ではなく 'Lax' で固定推奨
     REMEMBER_COOKIE_SECURE = False
     SECRET_KEY = "test-key"
-    SERVER_NAME = "localhost.localdomain"  # ←これも追加
+    SERVER_NAME = "localhost.localdomain"

@@ -11,11 +11,17 @@ import jpholiday
 from collections import defaultdict
 from datetime import datetime, timedelta
 from werkzeug.security import check_password_hash, generate_password_hash
-
 from .models import db, User, Schedule, DateNote, Company
 from .forms import LoginForm, AdminUserCreateForm, DeleteNoteForm
 from dateutil.parser import parse as parse_date
 import re
+import logging
+
+# ロギング設定
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
 
 
 def is_strong_password(pw):
@@ -50,10 +56,10 @@ def login():
     form = LoginForm()
 
     from flask_login import current_user  # 必ずここでimport
-    print("【login関数】METHOD:", request.method)
-    print("【login関数】POST DATA:", request.form)
-    print("【login関数】form.errors(before validate):", form.errors)
-    print("【login関数】form.validate_on_submit():", form.validate_on_submit())
+    logger.info("【login関数】METHOD: %s", request.method)
+    logger.info("【login関数】POST DATA: %s", request.form)
+    logger.info("【login関数】form.errors(before validate): %s", form.errors)
+    logger.info("【login関数】form.validate_on_submit(): %s", form.validate_on_submit())
 
     user = None  # これ重要！
 
@@ -61,20 +67,19 @@ def login():
         user = User.query.filter_by(username=form.username.data).first()
         if user and check_password_hash(user.password_hash, form.password.data):
             login_user(user)
-            print("【login_user called】user.id =", user.id)
-            print("【is_authenticated after login_user】", current_user.is_authenticated)
+            logger.info("【login_user called】user.id = %s", user.id)
+            logger.info("【is_authenticated after login_user】%s", current_user.is_authenticated)
             from flask import session
-            print("【session after login_user】", dict(session))
+            logger.info("【session after login_user】%s", dict(session))
             session.permanent = True
-            # 🔽 ここを追加
             if user.must_change_password:
                 return redirect(url_for('main.force_password_change'))
             return redirect(url_for('main.schedule_calendar'))
         else:
             flash('ユーザー名またはパスワードが違います', 'danger')
-            print("【login関数】ログイン失敗: user=", user)
+            logger.info("【login関数】ログイン失敗: user=%s", user)
 
-    print("【login関数】LOGIN ERRORS:", form.errors)
+    logger.info("【login関数】LOGIN ERRORS: %s", form.errors)
     return render_template('login.html', form=form)
 
 
@@ -335,8 +340,9 @@ def api_note_list():
         start_date = parse_date(start).date() if start else None
         end_date = parse_date(end).date() if end else None
     except Exception as e:
-        print("date parse error:", e)
+        logger.error("date parse error: %s", e)
         return jsonify({"error": "Invalid date format"}), 400
+
 
     # 発注元会社IDを特定（例：菱輝金型工業）
     client_company = Company.query.filter_by(name='菱輝金型工業').first()
