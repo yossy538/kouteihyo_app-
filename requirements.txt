@@ -28,3 +28,4 @@ gunicorn
 python-dotenv
 flask-talisman
 python-dateutil
+psycopg2-binary
