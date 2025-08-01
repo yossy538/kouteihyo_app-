@@ -27,3 +27,4 @@ WTForms==3.2.1
 gunicorn
 python-dotenv
 flask-talisman
+python-dateutil
