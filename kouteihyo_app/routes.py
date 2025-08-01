@@ -3,7 +3,7 @@
 
 from flask import (
     Blueprint, render_template, redirect, url_for,
-    flash, request, jsonify, session
+    flash, request, jsonify, session, abort
 )
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import or_, extract
@@ -14,8 +14,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from .models import db, User, Schedule, DateNote, Company
 from .forms import LoginForm, AdminUserCreateForm, DeleteNoteForm
-from dateutil.parser import parse as parse_date  # ファイル冒頭に追記
-from flask import abort
+from dateutil.parser import parse as parse_date
 import re
 
 
@@ -31,6 +30,19 @@ def is_strong_password(pw):
 
 
 bp = Blueprint('main', __name__)
+
+@bp.before_request
+def enforce_password_change():
+    # 必ずDB最新を参照
+    if current_user.is_authenticated:
+        user_fresh = User.query.filter_by(id=current_user.id).first()
+        if user_fresh and getattr(user_fresh, "must_change_password", False):
+            allowed_endpoints = ['main.force_password_change', 'main.logout', 'static']
+            if request.endpoint not in allowed_endpoints:
+                # ★flashは絶対にしない（リダイレクトのみ！）
+                return redirect(url_for('main.force_password_change'))
+
+
 
 # ログイン
 @bp.route('/login', methods=['GET', 'POST'])
@@ -358,16 +370,20 @@ def password_change():
         new2 = request.form.get('new_password2')
         if not check_password_hash(current_user.password_hash, old):
             flash('現在のパスワードが違います', 'danger')
+            return redirect(url_for('main.password_change'))
         elif new != new2:
             flash('新しいパスワードが一致しません', 'danger')
+            return redirect(url_for('main.password_change'))
         elif len(new) < 8:
             flash('パスワードは8文字以上にしてください', 'danger')
+            return redirect(url_for('main.password_change'))
         else:
             current_user.password_hash = generate_password_hash(new)
             db.session.commit()
             flash('パスワードを変更しました', 'success')
-            return redirect(url_for('main.schedule_calendar'))
+            return redirect(url_for('main.schedule_calendar'))  # ←カレンダーなどTOPへ
     return render_template('auth/password_change.html')
+
 
 
 @bp.route("/admin/list_users")

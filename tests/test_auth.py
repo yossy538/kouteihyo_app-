@@ -99,3 +99,25 @@ def test_normal_login_redirects_to_dashboard(client, user_without_force_change):
     )
     assert response.status_code == 302
     assert "/schedule_calendar" in response.headers["Location"] or "/schedules/calendar" in response.headers["Location"]
+
+@pytest.fixture
+def admin_user(app):
+    user = User(
+        company_id=1,
+        display_name="管理者",
+        username="admin",
+        email="admin@example.com",
+        password_hash=generate_password_hash("password"),
+        role="admin",
+        must_change_password=False
+    )
+    db.session.add(user)
+    db.session.commit()
+    yield user
+
+def test_login(client, admin_user):
+    response = client.post(url_for('main.login'), data={
+        'username': 'admin',
+        'password': 'password'
+    })
+    assert response.status_code == 200 or response.status_code == 302

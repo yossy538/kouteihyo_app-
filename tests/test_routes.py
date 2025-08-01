@@ -218,7 +218,9 @@ def test_company_user_cannot_see_admin_menu(client, app):
 def test_all_users_can_change_password(client, app, test_users):
     users, user_info = test_users
     for idx, info in enumerate(user_info):
+        # 1. まず旧パスでログイン
         login(client, info["username"], info["pw"])
+        # 2. パスワード変更実行
         resp = client.post(
             "/password_change",
             data={
@@ -228,11 +230,19 @@ def test_all_users_can_change_password(client, app, test_users):
             },
             follow_redirects=True
         )
+        # デバッグ出力
+        print("【DEBUG HTML】", resp.get_data(as_text=True))
+        # 3. 変更メッセージが本当に表示されるか
         assert "パスワードを変更しました" in resp.get_data(as_text=True)
+
+        # 4. 一度ログアウト
         client.get("/logout", follow_redirects=True)
+        # 5. 新パスワードで再ログインできるか
         resp2 = login(client, info["username"], f"newpw{idx}5678")
         assert "カレンダー" in resp2.get_data(as_text=True)
+        # 6. もう一度ログアウト
         client.get("/logout", follow_redirects=True)
+        # 7. 旧パスワードではログインできない
         resp3 = login(client, info["username"], info["pw"])
         assert "ユーザー名またはパスワードが違います" in resp3.get_data(as_text=True)
 
