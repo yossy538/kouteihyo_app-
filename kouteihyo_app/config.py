@@ -19,18 +19,29 @@ class Config:
     # セッション有効期限
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=120)
 
+class ProductionConfig(Config):
+    DEBUG = False
+    WTF_CSRF_ENABLED = True
+
+    # 明示的に本番用セキュリティ設定を再掲
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    REMEMBER_COOKIE_SECURE = True
+    REMEMBER_COOKIE_HTTPONLY = True
+
+    # 本番で環境変数がなければエラーにする
+    if not os.environ.get("SECRET_KEY"):
+        raise ValueError("SECRET_KEY is not set for production!")
+    if not os.environ.get("DATABASE_URL"):
+        raise ValueError("DATABASE_URL is not set for production!")
+
 class DevelopmentConfig(Config):
     DEBUG = True
     WTF_CSRF_ENABLED = False
     SESSION_COOKIE_SECURE = False
     REMEMBER_COOKIE_SECURE = False
     SQLALCHEMY_DATABASE_URI = "sqlite:///dev.db"  # ローカル用
-
-class ProductionConfig(Config):
-    DEBUG = False
-    WTF_CSRF_ENABLED = True
-    # SESSION_COOKIE_SECURE/REMEMBER_COOKIE_SECUREなどはConfigの値を継承
-    # 必ず環境変数で上書きする前提
 
 class TestingConfig(Config):
     TESTING = True
