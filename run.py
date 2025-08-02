@@ -18,11 +18,32 @@ if os.environ.get("IS_PRODUCTION", "").lower() == "true":
         print("✅ Migration complete!")
 
 # ---------------------------------------------------------
-# ② 必要なら初期ユーザー自動投入
+# ② 初期会社データ投入
 # ---------------------------------------------------------
 from kouteihyo_app.models import db, User, Company
 from werkzeug.security import generate_password_hash
 
+def create_initial_companies(app):
+    with app.app_context():
+        if Company.query.first():
+            print("ℹ️ 会社データは既に存在します。スキップ。")
+            return
+
+        companies = [
+            "三空工業",
+            "サトワ電工",
+            "平和住建",
+            "菱輝金型工業",
+            "葵ツール"
+        ]
+        for name in companies:
+            db.session.add(Company(name=name))
+        db.session.commit()
+        print("✅ 会社データ登録完了！")
+
+# ---------------------------------------------------------
+# ③ 初期ユーザー投入
+# ---------------------------------------------------------
 def create_initial_users(app):
     with app.app_context():
         if User.query.first():
@@ -65,32 +86,16 @@ def create_initial_users(app):
         print("✅ ユーザー一括登録完了！")
 
 # ---------------------------------------------------------
-# ③ フラグで初期ユーザー登録をON/OFF
+# ④ フラグで初期データ登録をON/OFF
 # ---------------------------------------------------------
 if os.environ.get("INIT_USERS_ON_STARTUP", "").lower() == "true":
-    create_initial_users(app)
+    create_initial_companies(app)  # 先に会社データ
+    create_initial_users(app)      # その後ユーザー
 
 # ---------------------------------------------------------
-# ④ アプリ起動（ローカル用）
+# ⑤ アプリ起動（ローカル用）
 # ---------------------------------------------------------
 if __name__ == "__main__":
     print("[DEBUG] os.getcwd() =", os.getcwd())
     print("[DEBUG] SECRET_KEY(環境変数) =", os.environ.get("SECRET_KEY"))
     app.run(debug=True, port=5010)
-def create_initial_companies(app):
-    with app.app_context():
-        if Company.query.first():
-            print("会社データは既に存在します。スキップ。")
-            return
-
-        companies = [
-            "三空工業",
-            "サトワ電工",
-            "平和住建",
-            "菱輝金型工業",
-            "葵ツール"
-        ]
-        for name in companies:
-            db.session.add(Company(name=name))
-        db.session.commit()
-        print("✅ 会社データ登録完了！")
