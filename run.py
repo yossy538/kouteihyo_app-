@@ -77,3 +77,20 @@ if __name__ == "__main__":
     print("[DEBUG] os.getcwd() =", os.getcwd())
     print("[DEBUG] SECRET_KEY(環境変数) =", os.environ.get("SECRET_KEY"))
     app.run(debug=True, port=5010)
+def create_initial_companies(app):
+    with app.app_context():
+        if Company.query.first():
+            print("会社データは既に存在します。スキップ。")
+            return
+
+        companies = [
+            "三空工業",
+            "サトワ電工",
+            "平和住建",
+            "菱輝金型工業",
+            "葵ツール"
+        ]
+        for name in companies:
+            db.session.add(Company(name=name))
+        db.session.commit()
+        print("✅ 会社データ登録完了！")
